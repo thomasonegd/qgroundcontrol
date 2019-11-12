@@ -14,7 +14,6 @@
 ///     @author Don Gagne <don@thegagnes.com>
 
 #include "MavlinkLogTest.h"
-#include "MainWindow.h"
 #include "MockLink.h"
 #include "QGCTemporaryFile.h"
 #include "QGCApplication.h"
@@ -38,7 +37,7 @@ void MavlinkLogTest::init(void)
     // Make sure temp directory is clear of mavlink logs
     QDir tmpDir(QStandardPaths::writableLocation(QStandardPaths::TempLocation));
     QStringList logFiles(tmpDir.entryList(QStringList(QString("*.%1").arg(_logFileExtension)), QDir::Files));
-    foreach(const QString &logFile, logFiles) {
+    for(const QString &logFile: logFiles) {
         bool success = tmpDir.remove(logFile);
         Q_UNUSED(success);
         Q_ASSERT(success);
@@ -128,7 +127,7 @@ void MavlinkLogTest::_connectLogWorker(bool arm)
     
     if (arm) {
         qgcApp()->toolbox()->multiVehicleManager()->activeVehicle()->setArmed(true);
-        QTest::qWait(1500); // Wait long enough for heartbeat to come through
+        QTest::qWait(500); // Wait long enough for heartbeat to come through
         
         // On Disconnect: We should get a getSaveFileName dialog.
         logSaveDir.setPath(QStandardPaths::writableLocation(QStandardPaths::TempLocation));

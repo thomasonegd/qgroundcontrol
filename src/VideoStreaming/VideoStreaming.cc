@@ -22,6 +22,9 @@
 #ifdef __android__
 //#define ANDDROID_GST_DEBUG
 #endif
+#if defined(__ios__)
+#include "gst_ios_init.h"
+#endif
 #endif
 
 #include "VideoStreaming.h"
@@ -42,12 +45,17 @@
     GST_PLUGIN_STATIC_DECLARE(videoparsersbad);
     GST_PLUGIN_STATIC_DECLARE(x264);
     GST_PLUGIN_STATIC_DECLARE(rtpmanager);
+    GST_PLUGIN_STATIC_DECLARE(isomp4);
+    GST_PLUGIN_STATIC_DECLARE(matroska);
+#endif
+#if defined(__android__)
+    GST_PLUGIN_STATIC_DECLARE(androidmedia);
 #endif
     G_END_DECLS
 #endif
 
 #if defined(QGC_GST_STREAMING)
-#if (defined(__macos__) && defined(QGC_INSTALL_RELEASE)) || defined(Q_OS_WIN)
+#if (defined(Q_OS_MAC) && defined(QGC_INSTALL_RELEASE)) || defined(Q_OS_WIN)
 static void qgcputenv(const QString& key, const QString& root, const QString& path)
 {
     QString value = root + path;
@@ -99,10 +107,10 @@ int start_logger(const char *app_name)
 }
 #endif
 
-void initializeVideoStreaming(int &argc, char* argv[])
+void initializeVideoStreaming(int &argc, char* argv[], char* logpath, char* debuglevel)
 {
 #if defined(QGC_GST_STREAMING)
-    #ifdef __macos__
+    #ifdef Q_OS_MAC
         #ifdef QGC_INSTALL_RELEASE
             QString currentDir = QCoreApplication::applicationDirPath();
             qgcputenv("GST_PLUGIN_SCANNER",           currentDir, "/../Frameworks/GStreamer.framework/Versions/1.0/libexec/gstreamer-1.0/gst-plugin-scanner");
@@ -117,21 +125,33 @@ void initializeVideoStreaming(int &argc, char* argv[])
         QString currentDir = QCoreApplication::applicationDirPath();
         qgcputenv("GST_PLUGIN_PATH", currentDir, "/gstreamer-plugins");
     #endif
-        // Initialize GStreamer
-        #ifdef ANDDROID_GST_DEBUG
-        start_logger("gst_log");
-        qputenv("GST_DEBUG", "*:4");
-        qputenv("GST_DEBUG_NO_COLOR", "1");
-        #endif
-        GError* error = NULL;
+
+    // Initialize GStreamer
+    #if defined(__ios__)
+        //-- iOS specific initialization
+        gst_ios_init();
+    #else
+        //-- Generic initialization
+        if (logpath) {
+            QString gstDebugFile = QString("%1/%2").arg(logpath).arg("gstreamer-log.txt");
+            qDebug() << "GStreamer debug output:" << gstDebugFile;
+            if (debuglevel) {
+                qputenv("GST_DEBUG", debuglevel);
+            }
+            qputenv("GST_DEBUG_NO_COLOR", "1");
+            qputenv("GST_DEBUG_FILE", gstDebugFile.toUtf8());
+            qputenv("GST_DEBUG_DUMP_DOT_DIR", logpath);
+        }
+        GError* error = nullptr;
         if (!gst_init_check(&argc, &argv, &error)) {
             qCritical() << "gst_init_check() failed: " << error->message;
             g_error_free(error);
         }
+    #endif
         // Our own plugin
         GST_PLUGIN_STATIC_REGISTER(QGC_VIDEOSINK_PLUGIN);
         // The static plugins we use
-    #if defined(__mobile__)
+    #if defined(__android__)
         GST_PLUGIN_STATIC_REGISTER(coreelements);
         GST_PLUGIN_STATIC_REGISTER(libav);
         GST_PLUGIN_STATIC_REGISTER(rtp);
@@ -140,13 +160,18 @@ void initializeVideoStreaming(int &argc, char* argv[])
         GST_PLUGIN_STATIC_REGISTER(videoparsersbad);
         GST_PLUGIN_STATIC_REGISTER(x264);
         GST_PLUGIN_STATIC_REGISTER(rtpmanager);
+        GST_PLUGIN_STATIC_REGISTER(isomp4);
+        GST_PLUGIN_STATIC_REGISTER(matroska);
+        GST_PLUGIN_STATIC_REGISTER(androidmedia);
     #endif
 #else
     Q_UNUSED(argc);
     Q_UNUSED(argv);
+    Q_UNUSED(logpath);
+    Q_UNUSED(debuglevel);
 #endif
     qmlRegisterType<VideoItem>              ("QGroundControl.QgcQtGStreamer", 1, 0, "VideoItem");
-    qmlRegisterUncreatableType<VideoSurface>("QGroundControl.QgcQtGStreamer", 1, 0, "VideoSurface", QLatin1String("VideoSurface from QML is not supported"));
+    qmlRegisterUncreatableType<VideoSurface>("QGroundControl.QgcQtGStreamer", 1, 0, "VideoSurface", QStringLiteral("VideoSurface from QML is not supported"));
 }
 
 void shutdownVideoStreaming()

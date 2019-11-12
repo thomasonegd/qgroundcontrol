@@ -19,7 +19,7 @@ class MotorComponent : public VehicleComponent
     Q_OBJECT
     
 public:
-    MotorComponent(Vehicle* vehicle, AutoPilotPlugin* autopilot, QObject* parent = NULL);
+    MotorComponent(Vehicle* vehicle, AutoPilotPlugin* autopilot, QObject* parent = nullptr);
     
     // Virtuals from VehicleComponent
     QStringList setupCompleteChangedTriggerList(void) const final;
@@ -30,9 +30,8 @@ public:
     QString iconResource(void) const final;
     bool requiresSetup(void) const final;
     bool setupComplete(void) const final;
-    QUrl setupSource(void) const final;
+    virtual QUrl setupSource(void) const;
     QUrl summaryQmlSource(void) const final;
-    QString prerequisiteSetup(void) const final;
 
 private:
     const QString   _name;

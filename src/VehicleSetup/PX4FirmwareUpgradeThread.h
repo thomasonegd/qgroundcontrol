@@ -23,8 +23,7 @@
 #include <QThread>
 #include <QTimer>
 #include <QTime>
-
-#include "qextserialport.h"
+#include <QSerialPort>
 
 #include <stdint.h>
 
@@ -43,7 +42,7 @@ public:
     
 signals:
     void updateProgress(int curr, int total);
-    void foundBoard(bool firstAttempt, const QGCSerialPortInfo& portInfo, int type);
+    void foundBoard(bool firstAttempt, const QGCSerialPortInfo& portInfo, int type, QString boardName);
     void noBoardFound(void);
     void boardGone(void);
     void foundBootloader(int bootloaderVersion, int boardID, int flashSize);
@@ -64,7 +63,7 @@ private slots:
     void _cancel(void);
     
 private:
-    bool _findBoardFromPorts(QGCSerialPortInfo& portInfo, QGCSerialPortInfo::BoardType_t& boardType);
+    bool _findBoardFromPorts(QGCSerialPortInfo& portInfo, QGCSerialPortInfo::BoardType_t& boardType, QString& boardName);
     bool _findBootloader(const QGCSerialPortInfo& portInfo, bool radioMode, bool errorOnNotFound);
     void _3drRadioForceBootloader(const QGCSerialPortInfo& portInfo);
     bool _erase(void);
@@ -72,7 +71,7 @@ private:
     PX4FirmwareUpgradeThreadController* _controller;
     
     Bootloader*      _bootloader;
-    QextSerialPort*     _bootloaderPort;
+    QSerialPort*     _bootloaderPort;
     QTimer*             _timerRetry;
     QTime               _elapsed;
     static const int    _retryTimeout = 100;
@@ -89,7 +88,7 @@ class PX4FirmwareUpgradeThreadController : public QObject
     Q_OBJECT
     
 public:
-    PX4FirmwareUpgradeThreadController(QObject* parent = NULL);
+    PX4FirmwareUpgradeThreadController(QObject* parent = nullptr);
     ~PX4FirmwareUpgradeThreadController(void);
     
     /// @brief Begins the process of searching for a supported board connected to any serial port. This will
@@ -107,7 +106,7 @@ public:
     
 signals:
     /// @brief Emitted by the find board process when it finds a board.
-    void foundBoard(bool firstAttempt, const QGCSerialPortInfo &portInfo, int boardType);
+    void foundBoard(bool firstAttempt, const QGCSerialPortInfo &portInfo, int boardType, QString boardName);
     
     void noBoardFound(void);
     
@@ -142,7 +141,7 @@ signals:
     void _cancel(void);
     
 private slots:
-    void _foundBoard(bool firstAttempt, const QGCSerialPortInfo& portInfo, int type) { emit foundBoard(firstAttempt, portInfo, type); }
+    void _foundBoard(bool firstAttempt, const QGCSerialPortInfo& portInfo, int type, QString name) { emit foundBoard(firstAttempt, portInfo, type, name); }
     void _noBoardFound(void) { emit noBoardFound(); }
     void _boardGone(void) { emit boardGone(); }
     void _foundBootloader(int bootloaderVersion, int boardID, int flashSize) { emit foundBootloader(bootloaderVersion, boardID, flashSize); }

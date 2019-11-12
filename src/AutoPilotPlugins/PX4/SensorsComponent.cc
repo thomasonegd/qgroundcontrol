@@ -13,17 +13,20 @@
 
 #include "SensorsComponent.h"
 #include "PX4AutoPilotPlugin.h"
-#include "QGCQmlWidgetHolder.h"
 #include "SensorsComponentController.h"
 
-const char* SensorsComponent::_airspeedBreaker =    "CBRK_AIRSPD_CHK";
-const char* SensorsComponent::_airspeedCal =        "SENS_DPRES_OFF";
+const char* SensorsComponent::_airspeedBreakerParam =   "CBRK_AIRSPD_CHK";
+const char* SensorsComponent::_airspeedDisabledParam =  "FW_ARSP_MODE";
+const char* SensorsComponent::_airspeedCalParam =       "SENS_DPRES_OFF";
+
+const char* SensorsComponent::_magEnabledParam =  "SYS_HAS_MAG";
+const char* SensorsComponent::_magCalParam =  "CAL_MAG0_ID";
 
 SensorsComponent::SensorsComponent(Vehicle* vehicle, AutoPilotPlugin* autopilot, QObject* parent) :
     VehicleComponent(vehicle, autopilot, parent),
     _name(tr("Sensors"))
 {
-    _deviceIds << QStringLiteral("CAL_MAG0_ID") << QStringLiteral("CAL_GYRO0_ID") << QStringLiteral("CAL_ACC0_ID");
+    _deviceIds = QStringList({QStringLiteral("CAL_GYRO0_ID"), QStringLiteral("CAL_ACC0_ID") });
 }
 
 QString SensorsComponent::name(void) const
@@ -49,16 +52,24 @@ bool SensorsComponent::requiresSetup(void) const
 bool SensorsComponent::setupComplete(void) const
 {
     foreach (const QString &triggerParam, _deviceIds) {
-        if (_autopilot->getParameterFact(FactSystem::defaultComponentId, triggerParam)->rawValue().toFloat() == 0.0f) {
+        if (_vehicle->parameterManager()->getParameter(FactSystem::defaultComponentId, triggerParam)->rawValue().toFloat() == 0.0f) {
             return false;
         }
     }
+    bool magEnabled = true;
+    if (_vehicle->parameterManager()->parameterExists(FactSystem::defaultComponentId, _magEnabledParam)) {
+        magEnabled = _vehicle->parameterManager()->getParameter(FactSystem::defaultComponentId, _magEnabledParam)->rawValue().toBool();
+    }
+
+    if (magEnabled && _vehicle->parameterManager()->getParameter(FactSystem::defaultComponentId, _magCalParam)->rawValue().toFloat() == 0.0f) {
+        return false;
+    }
 
     if (_vehicle->fixedWing() || _vehicle->vtol()) {
-        if (_autopilot->getParameterFact(FactSystem::defaultComponentId, _airspeedBreaker)->rawValue().toInt() != 162128) {
-            if (_autopilot->getParameterFact(FactSystem::defaultComponentId, _airspeedCal)->rawValue().toFloat() == 0.0f) {
-                return false;
-            }
+        if (!_vehicle->parameterManager()->getParameter(FactSystem::defaultComponentId, _airspeedDisabledParam)->rawValue().toBool() &&
+                _vehicle->parameterManager()->getParameter(FactSystem::defaultComponentId, _airspeedBreakerParam)->rawValue().toInt() != 162128 &&
+                _vehicle->parameterManager()->getParameter(FactSystem::defaultComponentId, _airspeedCalParam)->rawValue().toFloat() == 0.0f) {
+            return false;
         }
     }
 
@@ -69,9 +80,9 @@ QStringList SensorsComponent::setupCompleteChangedTriggerList(void) const
 {
     QStringList triggers;
     
-    triggers << _deviceIds;
+    triggers << _deviceIds << _magCalParam << _magEnabledParam;
     if (_vehicle->fixedWing() || _vehicle->vtol()) {
-        triggers << _airspeedCal << _airspeedBreaker;
+        triggers << _airspeedCalParam << _airspeedBreakerParam;
     }
     
     return triggers;
@@ -93,16 +104,4 @@ QUrl SensorsComponent::summaryQmlSource(void) const
     }
     
     return QUrl::fromUserInput(summaryQml);
-}
-
-QString SensorsComponent::prerequisiteSetup(void) const
-{
-    PX4AutoPilotPlugin* plugin = dynamic_cast<PX4AutoPilotPlugin*>(_autopilot);
-    Q_ASSERT(plugin);
-    
-    if (!plugin->airframeComponent()->setupComplete()) {
-        return plugin->airframeComponent()->name();
-    }
-    
-    return QString();
 }

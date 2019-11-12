@@ -8,538 +8,656 @@
  ****************************************************************************/
 
 
-import QtQuick                  2.5
+import QtQuick                  2.3
 import QtQuick.Controls         1.2
-import QtQuick.Controls.Styles  1.2
+import QtQuick.Controls.Styles  1.4
 import QtQuick.Layouts          1.2
 import QtGraphicalEffects       1.0
 
+import QGroundControl               1.0
 import QGroundControl.FactSystem    1.0
 import QGroundControl.FactControls  1.0
 import QGroundControl.Controls      1.0
 import QGroundControl.ScreenTools   1.0
-
+import QGroundControl.Palette       1.0
 
 SetupPage {
     id:             safetyPage
     pageComponent:  pageComponent
-
     Component {
         id: pageComponent
 
         Item {
-            width:  Math.max(availableWidth, mainCol.width)
-            height: mainCol.height
+            width:      Math.max(availableWidth, outerColumn.width)
+            height:     outerColumn.height
 
             FactPanelController {
                 id:         controller
-                factPanel:  safetyPage.viewPanel
             }
 
+            readonly property string hitlParam: "SYS_HITL"
+
             property real _margins:         ScreenTools.defaultFontPixelHeight
-            property real _middleRowWidth:  ScreenTools.defaultFontPixelWidth * 20
-            property real _editFieldWidth:  ScreenTools.defaultFontPixelWidth * 14
+            property real _labelWidth:      ScreenTools.defaultFontPixelWidth  * 30
+            property real _editFieldWidth:  ScreenTools.defaultFontPixelWidth  * 24
+            property real _imageHeight:     ScreenTools.defaultFontPixelHeight * 3
+            property real _imageWidth:      _imageHeight * 2
 
-            property Fact _fenceAction:     controller.getParameterFact(-1, "GF_ACTION")
-            property Fact _fenceRadius:     controller.getParameterFact(-1, "GF_MAX_HOR_DIST")
-            property Fact _fenceAlt:        controller.getParameterFact(-1, "GF_MAX_VER_DIST")
-            property Fact _rtlLandDelay:    controller.getParameterFact(-1, "RTL_LAND_DELAY")
-            property Fact _lowBattAction:   controller.getParameterFact(-1, "COM_LOW_BAT_ACT")
-            property Fact _rcLossAction:    controller.getParameterFact(-1, "NAV_RCL_ACT")
-            property Fact _dlLossAction:    controller.getParameterFact(-1, "NAV_DLL_ACT")
-            property Fact _disarmLandDelay: controller.getParameterFact(-1, "COM_DISARM_LAND")
-            property Fact _landSpeedMC:     controller.getParameterFact(-1, "MPC_LAND_SPEED", false)
+            property Fact _enableLogging:       controller.getParameterFact(-1, "SDLOG_MODE")
+            property Fact _fenceAction:         controller.getParameterFact(-1, "GF_ACTION")
+            property Fact _fenceRadius:         controller.getParameterFact(-1, "GF_MAX_HOR_DIST")
+            property Fact _fenceAlt:            controller.getParameterFact(-1, "GF_MAX_VER_DIST")
+            property Fact _rtlLandDelay:        controller.getParameterFact(-1, "RTL_LAND_DELAY")
+            property Fact _lowBattAction:       controller.getParameterFact(-1, "COM_LOW_BAT_ACT")
+            property Fact _rcLossAction:        controller.getParameterFact(-1, "NAV_RCL_ACT")
+            property Fact _dlLossAction:        controller.getParameterFact(-1, "NAV_DLL_ACT")
+            property Fact _disarmLandDelay:     controller.getParameterFact(-1, "COM_DISARM_LAND")
+            property Fact _collisionPrevention: controller.getParameterFact(-1, "CP_DIST")
+            property Fact _objectAvoidance:     controller.getParameterFact(-1, "COM_OBS_AVOID")
+            property Fact _landSpeedMC:         controller.getParameterFact(-1, "MPC_LAND_SPEED", false)
+            property bool _hitlAvailable:       controller.parameterExists(-1, hitlParam)
+            property Fact _hitlEnabled:         controller.getParameterFact(-1, hitlParam, false)
 
-            property bool _showIcons: !ScreenTools.isTinyScreen
+            ColumnLayout {
+                id:         outerColumn
+                spacing:    _margins
+                anchors.horizontalCenter:   parent.horizontalCenter
 
-            Column {
-                id:                                     mainCol
-                spacing:                                _margins
-                anchors.horizontalCenter:               parent.horizontalCenter
+                QGCLabel {
+                    text:                   qsTr("Low Battery Failsafe Trigger")
+                }
 
-                /*
-                   **** Low Battery ****
-                */
-                Item { width: 1; height: _margins * 0.5; }
-                QGCLabel {
-                    text:                               qsTr("Low Battery Failsafe Trigger")
-                    font.family:                        ScreenTools.demiboldFontFamily
-                }
                 Rectangle {
-                    color:                              qgcPal.windowShade
-                    width:                              rtlSettings.width
-                    height:                             lowBattRow.height + _margins * 2
+                    width:                  mainRow.width  + (_margins * 2)
+                    height:                 mainRow.height + (_margins * 2)
+                    color:                  qgcPal.windowShade
                     Row {
-                        id:                             lowBattRow
-                        spacing:                        _margins
-                        anchors.verticalCenter:         parent.verticalCenter
-                        Item { width: _margins * 0.5; height: 1; }
-                        Image {
-                            height:                     ScreenTools.defaultFontPixelWidth * 6
-                            width:                      ScreenTools.defaultFontPixelWidth * 20
-                            sourceSize.width:           width
-                            mipmap:                     true
-                            fillMode:                   Image.PreserveAspectFit
-                            source:                     qgcPal.globalTheme === qgcPal.Light ? "/qmlimages/LowBatteryLight.svg" : "/qmlimages/LowBattery.svg"
-                            anchors.verticalCenter:     parent.verticalCenter
-                            visible:                    _showIcons
-                        }
+                        id:                 mainRow
+                        spacing:            _margins
+                        anchors.centerIn:   parent
                         Item {
-                            width:      _margins * 0.5
-                            height:     1
-                            visible:    _showIcons
-                        }
-                        Column {
-                            spacing:                    _margins * 0.5
-                            anchors.verticalCenter:     parent.verticalCenter
-                            Row {
-                                QGCLabel {
-                                    anchors.baseline:   lowBattCombo.baseline
-                                    width:              _middleRowWidth
-                                    text:               qsTr("Failsafe Action:")
-                                }
-                                FactComboBox {
-                                    id:                 lowBattCombo
-                                    width:              _editFieldWidth
-                                    fact:               _lowBattAction
-                                    indexModel:         false
-                                }
-                            }
-                            Row {
-                                QGCLabel {
-                                    anchors.baseline:   batLowLevelField.baseline
-                                    width:              _middleRowWidth
-                                    text:               qsTr("Battery Warn Level:")
-                                }
-                                FactTextField {
-                                    id:                 batLowLevelField
-                                    fact:               controller.getParameterFact(-1, "BAT_LOW_THR")
-                                    showUnits:          true
-                                    width:              _editFieldWidth
-                                }
-                            }
-                            Row {
-                                QGCLabel {
-                                    anchors.baseline:   batCritLevelField.baseline
-                                    width:              _middleRowWidth
-                                    text:               qsTr("Battery Failsafe Level:")
-                                }
-                                FactTextField {
-                                    id:                 batCritLevelField
-                                    fact:               controller.getParameterFact(-1, "BAT_CRIT_THR")
-                                    showUnits:          true
-                                    width:              _editFieldWidth
-                                }
+                            width:                  _imageWidth
+                            height:                 _imageHeight
+                            anchors.verticalCenter: parent.verticalCenter
+                            Image {
+                                mipmap:             true
+                                fillMode:           Image.PreserveAspectFit
+                                source:             qgcPal.globalTheme === QGCPalette.Light ? "/qmlimages/LowBatteryLight.svg" : "/qmlimages/LowBattery.svg"
+                                height:             _imageHeight
+                                anchors.centerIn:   parent
                             }
                         }
-                    }
-                }
-                /*
-                   **** RC Loss ****
-                */
-                QGCLabel {
-                    text:                               qsTr("RC Loss Failsafe Trigger")
-                    font.family:                        ScreenTools.demiboldFontFamily
-                }
-                Rectangle {
-                    color:                              qgcPal.windowShade
-                    width:                              rtlSettings.width
-                    height:                             rcLossRow.height + _margins * 2
-                    Row {
-                        id:                             rcLossRow
-                        spacing:                        _margins
-                        anchors.verticalCenter:         parent.verticalCenter
-                        Item { width: _margins * 0.5; height: 1; }
-                        Image {
-                            height:                     ScreenTools.defaultFontPixelWidth * 6
-                            width:                      ScreenTools.defaultFontPixelWidth * 20
-                            sourceSize.width:           width
-                            mipmap:                     true
-                            fillMode:                   Image.PreserveAspectFit
-                            source:                     qgcPal.globalTheme === qgcPal.Light ? "/qmlimages/RCLossLight.svg" : "/qmlimages/RCLoss.svg"
-                            anchors.verticalCenter:     parent.verticalCenter
-                            visible:                    _showIcons
-                        }
-                        Item {
-                            width:      _margins * 0.5
-                            height:     1
-                            visible:    _showIcons
-                        }
-                        Column {
-                            spacing:                    _margins * 0.5
-                            anchors.verticalCenter:     parent.verticalCenter
-                            Row {
-                                QGCLabel {
-                                    anchors.baseline:   rcLossCombo.baseline
-                                    width:              _middleRowWidth
-                                    text:               qsTr("Failsafe Action:")
-                                }
-                                FactComboBox {
-                                    id:                 rcLossCombo
-                                    width:              _editFieldWidth
-                                    fact:               _rcLossAction
-                                    indexModel:         false
-                                }
-                            }
-                            Row {
-                                QGCLabel {
-                                    anchors.baseline:   rcLossField.baseline
-                                    width:              _middleRowWidth
-                                    text:               qsTr("RC Loss Timeout:")
-                                }
-                                FactTextField {
-                                    id:                 rcLossField
-                                    fact:               controller.getParameterFact(-1, "COM_RC_LOSS_T")
-                                    showUnits:          true
-                                    width:              _editFieldWidth
-                                }
-                            }
-                        }
-                    }
-                }
-                /*
-                   **** Data Link Loss ****
-                */
-                QGCLabel {
-                    text:                               qsTr("Data Link Loss Failsafe Trigger")
-                    font.family:                        ScreenTools.demiboldFontFamily
-                }
-                Rectangle {
-                    color:                              qgcPal.windowShade
-                    width:                              rtlSettings.width
-                    height:                             dlLossRow.height + _margins * 2
-                    Row {
-                        id:                             dlLossRow
-                        spacing:                        _margins
-                        anchors.verticalCenter:         parent.verticalCenter
-                        Item { width: _margins * 0.5; height: 1; }
-                        Image {
-                            height:                     ScreenTools.defaultFontPixelWidth * 6
-                            width:                      ScreenTools.defaultFontPixelWidth * 20
-                            sourceSize.width:           width
-                            mipmap:                     true
-                            fillMode:                   Image.PreserveAspectFit
-                            source:                     qgcPal.globalTheme === qgcPal.Light ? "/qmlimages/DatalinkLossLight.svg" : "/qmlimages/DatalinkLoss.svg"
-                            anchors.verticalCenter:     parent.verticalCenter
-                            visible:                    _showIcons
-                        }
-                        Item {
-                            width:      _margins * 0.5
-                            height:     1
-                            visible:    _showIcons
-                        }
-                        Column {
-                            spacing:                    _margins * 0.5
-                            anchors.verticalCenter:     parent.verticalCenter
-                            Row {
-                                QGCLabel {
-                                    anchors.baseline:   dlLossCombo.baseline
-                                    width:              _middleRowWidth
-                                    text:               qsTr("Failsafe Action:")
-                                }
-                                FactComboBox {
-                                    id:                 dlLossCombo
-                                    width:              _editFieldWidth
-                                    fact:               _dlLossAction
-                                    indexModel:         false
-                                }
-                            }
-                            Row {
-                                QGCLabel {
-                                    anchors.baseline:   dlLossField.baseline
-                                    width:              _middleRowWidth
-                                    text:               qsTr("Data Link Loss Timeout:")
-                                }
-                                FactTextField {
-                                    id:                 dlLossField
-                                    fact:               controller.getParameterFact(-1, "COM_DL_LOSS_T")
-                                    showUnits:          true
-                                    width:              _editFieldWidth
-                                }
-                            }
-                        }
-                    }
-                }
-                /*
-                   **** Geofence ****
-                */
-                QGCLabel {
-                    text:                               qsTr("Geofence Failsafe Trigger")
-                    font.family:                        ScreenTools.demiboldFontFamily
-                }
-                Rectangle {
-                    color:                              qgcPal.windowShade
-                    width:                              rtlSettings.width
-                    height:                             geofenceRow.height + _margins * 2
-                    Row {
-                        id:                             geofenceRow
-                        spacing:                        _margins
-                        anchors.verticalCenter:         parent.verticalCenter
-                        Item { width: _margins * 0.5; height: 1; }
-                        Image {
-                            height:                     ScreenTools.defaultFontPixelWidth * 8
-                            width:                      ScreenTools.defaultFontPixelWidth * 20
-                            sourceSize.width:           width
-                            mipmap:                     true
-                            fillMode:                   Image.PreserveAspectFit
-                            source:                     qgcPal.globalTheme === qgcPal.Light ? "/qmlimages/GeoFenceLight.svg" : "/qmlimages/GeoFence.svg"
-                            anchors.verticalCenter:     parent.verticalCenter
-                            visible:                    _showIcons
-                        }
-                        Item {
-                            width:      _margins * 0.5
-                            height:     1
-                            visible:    _showIcons
-                        }
-                        Column {
-                            spacing:                    _margins * 0.5
-                            anchors.verticalCenter:     parent.verticalCenter
-                            Row {
-                                QGCLabel {
-                                    id:                 fenceActionLabel
-                                    anchors.baseline:   fenceActionCombo.baseline
-                                    text:               qsTr("Action on breach:")
-                                    width:              _middleRowWidth
-                                }
-                                FactComboBox {
-                                    id:                 fenceActionCombo
-                                    width:              _editFieldWidth
-                                    fact:               _fenceAction
-                                    indexModel:         false
-                                }
-                            }
-                            Row {
-                                QGCCheckBox {
-                                    id:                 fenceRadiusCheckBox
-                                    anchors.baseline:   fenceRadiusField.baseline
-                                    text:               qsTr("Max radius:")
-                                    checked:            _fenceRadius.value > 0
-                                    onClicked:          _fenceRadius.value = checked ? 100 : 0
-                                    width:              _middleRowWidth
-                                }
-                                FactTextField {
-                                    id:                 fenceRadiusField
-                                    showUnits:          true
-                                    fact:               _fenceRadius
-                                    enabled:            fenceRadiusCheckBox.checked
-                                    width:              _editFieldWidth
-                                }
-                            }
-                            Row {
-                                QGCCheckBox {
-                                    id:                 fenceAltMaxCheckBox
-                                    anchors.baseline:   fenceAltMaxField.baseline
-                                    text:               qsTr("Max altitude:")
-                                    checked:            _fenceAlt.value > 0
-                                    onClicked:          _fenceAlt.value = checked ? 100 : 0
-                                    width:              _middleRowWidth
-                                }
-                                FactTextField {
-                                    id:                 fenceAltMaxField
-                                    showUnits:          true
-                                    fact:               _fenceAlt
-                                    enabled:            fenceAltMaxCheckBox.checked
-                                    width:              _editFieldWidth
-                                }
-                            }
-                        }
-                    }
-                }
-                /*
-                   **** Return Home Settings ****
-                */
-                QGCLabel {
-                    id:                                 rtlLabel
-                    text:                               qsTr("Return Home Settings")
-                    font.family:                        ScreenTools.demiboldFontFamily
-                }
-                Rectangle {
-                    id:                                 rtlSettings
-                    color:                              qgcPal.windowShade
-                    width:                              rtlRow.width  + _margins * 2
-                    height:                             rtlRow.height + _margins * 2
-                    Row {
-                        id:                             rtlRow
-                        spacing:                        _margins
-                        anchors.verticalCenter:         parent.verticalCenter
-                        Item { width: _margins * 0.5; height: 1; }
-                        QGCColoredImage {
-                            id:                         icon
-                            color:                      qgcPal.text
-                            height:                     ScreenTools.defaultFontPixelWidth * 10
-                            width:                      ScreenTools.defaultFontPixelWidth * 20
-                            sourceSize.width:           width
-                            mipmap:                     true
-                            fillMode:                   Image.PreserveAspectFit
-                            source:                     controller.vehicle.fixedWing ? "/qmlimages/ReturnToHomeAltitude.svg" : "/qmlimages/ReturnToHomeAltitudeCopter.svg"
-                            anchors.verticalCenter:     parent.verticalCenter
-                            visible:                    _showIcons
-                        }
-                        Item {
-                            width:      _margins * 0.5
-                            height:     1
-                            visible:    _showIcons
-                        }
-                        Column {
-                            spacing:                    _margins * 0.5
-                            Row {
-                                QGCLabel {
-                                    id:                 climbLabel
-                                    anchors.baseline:   climbField.baseline
-                                    width:              _middleRowWidth
-                                    text:               qsTr("Climb to altitude of:")
-                                }
-                                FactTextField {
-                                    id:                 climbField
-                                    fact:               controller.getParameterFact(-1, "RTL_RETURN_ALT")
-                                    showUnits:          true
-                                    width:              _editFieldWidth
-                                }
-                            }
-                            Item { width: 1; height: _margins * 0.5; }
+                        GridLayout {
+                            columns:                2
+                            anchors.verticalCenter: parent.verticalCenter
+
                             QGCLabel {
-                                id:                     returnHomeLabel
-                                text:                   "Return home, then:"
+                                text:               qsTr("Failsafe Action:")
+                                Layout.minimumWidth:_labelWidth
+                                Layout.fillWidth:   true
                             }
-                            Row {
-                                Item { height: 1; width: _margins; }
-                                Column {
-                                    spacing:            _margins * 0.5
-                                    ExclusiveGroup { id: homeLoiterGroup }
-                                    QGCRadioButton {
-                                        id:             homeLandRadio
-                                        checked:        _rtlLandDelay.value === 0
-                                        exclusiveGroup: homeLoiterGroup
-                                        text:           "Land immediately"
-                                        onClicked:      _rtlLandDelay.value = 0
-                                    }
-                                    QGCRadioButton {
-                                        id:             homeLoiterNoLandRadio
-                                        checked:        _rtlLandDelay.value < 0
-                                        exclusiveGroup: homeLoiterGroup
-                                        text:           "Loiter and do not land"
-                                        onClicked:      _rtlLandDelay.value = -1
-                                    }
-                                    QGCRadioButton {
-                                        id:             homeLoiterLandRadio
-                                        checked:        _rtlLandDelay.value > 0
-                                        exclusiveGroup: homeLoiterGroup
-                                        text:           qsTr("Loiter and land after specified time")
-                                        onClicked:      _rtlLandDelay.value = 60
-                                    }
-                                }
+                            FactComboBox {
+                                fact:               _lowBattAction
+                                indexModel:         false
+                                Layout.minimumWidth:_editFieldWidth
+                                Layout.fillWidth:   true
                             }
-                            Item { width: 1; height: _margins * 0.5; }
-                            Row {
-                                QGCLabel {
-                                    text:               qsTr("Loiter Time")
-                                    width:              _middleRowWidth
-                                    anchors.baseline:   landDelayField.baseline
-                                    color:              qgcPal.text
-                                    enabled:            homeLoiterLandRadio.checked === true
-                                }
-                                FactTextField {
-                                    id:                 landDelayField
-                                    fact:               controller.getParameterFact(-1, "RTL_LAND_DELAY")
-                                    showUnits:          true
-                                    enabled:            homeLoiterLandRadio.checked === true
-                                    width:              _editFieldWidth
-                                }
-                            }
-                            Row {
-                                QGCLabel {
-                                    text:               qsTr("Loiter Altitude")
-                                    width:              _middleRowWidth
-                                    anchors.baseline:   descendField.baseline
-                                    color:              qgcPal.text
-                                    enabled:            homeLoiterLandRadio.checked === true || homeLoiterNoLandRadio.checked === true
-                                }
-                                FactTextField {
-                                    id:                 descendField
-                                    fact:               controller.getParameterFact(-1, "RTL_DESCEND_ALT")
-                                    enabled:            homeLoiterLandRadio.checked === true || homeLoiterNoLandRadio.checked === true
-                                    showUnits:          true
-                                    width:              _editFieldWidth
-                                }
-                            }
-                        }
-                    }
-                }
-                /*
-                   **** Land Mode Settings ****
-                */
-                QGCLabel {
-                    text:                               qsTr("Land Mode Settings")
-                    font.family:                        ScreenTools.demiboldFontFamily
-                }
-                Rectangle {
-                    color:                              qgcPal.windowShade
-                    width:                              rtlSettings.width
-                    height:                             landModeRow.height + _margins * 2
-                    Row {
-                        id:                             landModeRow
-                        spacing:                        _margins
-                        anchors.verticalCenter:         parent.verticalCenter
-                        Item {
-                            width:                      _margins * 0.5
-                            height:                     1
-                        }
-                        QGCColoredImage {
-                            color:                      qgcPal.text
-                            height:                     ScreenTools.defaultFontPixelWidth * 13
-                            width:                      ScreenTools.defaultFontPixelWidth * 20
-                            sourceSize.width:           width
-                            mipmap:                     true
-                            fillMode:                   Image.PreserveAspectFit
-                            source:                     controller.vehicle.fixedWing ? "/qmlimages/LandMode.svg" : "/qmlimages/LandModeCopter.svg"
-                            anchors.verticalCenter:     parent.verticalCenter
-                            visible:                    _showIcons
-                        }
-                        Item {
-                            width:      _margins * 0.5
-                            height:     1
-                            visible:    _showIcons
-                        }
-                        Column {
-                            spacing:                    _margins * 0.5
-                            anchors.verticalCenter:     parent.verticalCenter
-                            Row {
-                                visible:                !controller.vehicle.fixedWing && (_landSpeedMC !== -1)
-                                QGCLabel {
-                                    anchors.baseline:   landVelField.baseline
-                                    width:              _middleRowWidth
-                                    text:               qsTr("Landing Velocity:")
-                                }
-                                FactTextField {
-                                    id:                 landVelField
-                                    fact:               _landSpeedMC
-                                    showUnits:          true
-                                    width:              _editFieldWidth
-                                }
-                            }
-                            Row {
-                                QGCCheckBox {
-                                    id:                 disarmDelayCheckBox
-                                    anchors.baseline:   disarmField.baseline
-                                    text:               qsTr("Disarm After:")
-                                    checked:            _disarmLandDelay.value > 0
-                                    onClicked:          _disarmLandDelay.value = checked ? 2 : 0
-                                    width:              _middleRowWidth
-                                }
-                                FactTextField {
-                                    id:                 disarmField
-                                    showUnits:          true
-                                    fact:               _disarmLandDelay
-                                    enabled:            disarmDelayCheckBox.checked
-                                    width:              _editFieldWidth
-                                }
-                            }
-                        }
-                    }
-                }
-                Item { width: 1; height: _margins * 0.5; }
-            } // Column
-        } // Item
-    } // Component
-} // SetupPage
 
+                            QGCLabel {
+                                text:               qsTr("Battery Warn Level:")
+                                Layout.fillWidth:   true
+                            }
+                            FactTextField {
+                                fact:               controller.getParameterFact(-1, "BAT_LOW_THR")
+                                Layout.fillWidth:   true
+                            }
+
+                            QGCLabel {
+                                text:               qsTr("Battery Failsafe Level:")
+                                Layout.fillWidth:   true
+                            }
+                            FactTextField {
+                                fact:               controller.getParameterFact(-1, "BAT_CRIT_THR")
+                                Layout.fillWidth:   true
+                            }
+
+                            QGCLabel {
+                                text:               qsTr("Battery Emergency Level:")
+                                Layout.fillWidth:   true
+                            }
+                            FactTextField {
+                                fact:               controller.getParameterFact(-1, "BAT_EMERGEN_THR")
+                                Layout.fillWidth:   true
+                            }
+                        }
+                    }
+                }
+
+                QGCLabel {
+                    text:                   qsTr("Object Detection")
+                }
+
+                Rectangle {
+                    width:                  mainRow.width + (_margins * 2)
+                    height:                 odRow.height  + (_margins * 2)
+                    color:                  qgcPal.windowShade
+                    Row {
+                        id:                 odRow
+                        spacing:            _margins
+                        anchors.centerIn:   parent
+                        Item {
+                            width:                  _imageWidth
+                            height:                 _imageHeight
+                            anchors.verticalCenter: parent.verticalCenter
+                            QGCColoredImage {
+                                color:              qgcPal.text
+                                source:             "/qmlimages/ObjectAvoidance.svg"
+                                height:             _imageHeight
+                                width:              _imageHeight * 2
+                                anchors.centerIn:   parent
+                            }
+                        }
+                        GridLayout {
+                            columns:                2
+                            anchors.verticalCenter: parent.verticalCenter
+
+                            QGCLabel {
+                                text:               qsTr("Collision Prevention:")
+                                Layout.minimumWidth:_labelWidth
+                                Layout.fillWidth:   true
+                            }
+                            QGCComboBox {
+                                model:              [qsTr("Disabled"), qsTr("Enabled")]
+                                enabled:            _collisionPrevention
+                                Layout.minimumWidth:_editFieldWidth
+                                Layout.fillWidth:   true
+                                currentIndex:       _collisionPrevention ? (_collisionPrevention.rawValue > 0 ? 1 : 0) : 0
+                                onActivated: {
+                                    if(_collisionPrevention) {
+                                        _collisionPrevention.value = index > 0 ? 5 : -1
+                                        console.log('Collision prevention enabled: ' + _collisionPrevention.value)
+                                    }
+                                }
+                            }
+
+                            QGCLabel {
+                                text:               qsTr("Obstacle Avoidance:")
+                                Layout.fillWidth:   true
+                            }
+                            QGCComboBox {
+                                model:              [qsTr("Disabled"), qsTr("Enabled")]
+                                enabled:            _objectAvoidance && _collisionPrevention.rawValue > 0
+                                Layout.minimumWidth:_editFieldWidth
+                                Layout.fillWidth:   true
+                                currentIndex:       _objectAvoidance ? (_objectAvoidance.value === 0 ? 0 : 1) : 0
+                                onActivated: {
+                                    if(_objectAvoidance) {
+                                        _objectAvoidance.value = index > 0 ? 1 : 0
+                                    }
+                                }
+                            }
+
+                            QGCLabel {
+                                text:               qsTr("Minimum Distance: (") + QGroundControl.appSettingsDistanceUnitsString + ")"
+                                Layout.fillWidth:   true
+                                Layout.alignment:   Qt.AlignVCenter
+                            }
+                            QGCSlider {
+                                width:              _editFieldWidth
+                                enabled:            _collisionPrevention && _collisionPrevention.rawValue > 0
+                                Layout.minimumWidth:_editFieldWidth
+                                Layout.minimumHeight:   ScreenTools.defaultFontPixelHeight * 2
+                                Layout.fillWidth:   true
+                                Layout.fillHeight:  true
+                                maximumValue:       QGroundControl.metersToAppSettingsDistanceUnits(15)
+                                minimumValue:       QGroundControl.metersToAppSettingsDistanceUnits(1)
+                                stepSize:           1
+                                displayValue:       true
+                                updateValueWhileDragging:   false
+                                Layout.alignment:   Qt.AlignVCenter
+                                value: {
+                                    if (_collisionPrevention && _collisionPrevention.rawValue > 0) {
+                                        return QGroundControl.metersToAppSettingsDistanceUnits(_collisionPrevention.rawValue)
+                                    } else {
+                                        return 1;
+                                    }
+                                }
+                                onValueChanged: {
+                                    if(_collisionPrevention) {
+                                        //-- Negative means disabled
+                                        if(_collisionPrevention.rawValue >= 0) {
+                                            _collisionPrevention.rawValue = QGroundControl.appSettingsDistanceUnitsToMeters(value)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                QGCLabel {
+                    text:                   qsTr("RC Loss Failsafe Trigger")
+                }
+
+                Rectangle {
+                    width:                  mainRow.width     + (_margins * 2)
+                    height:                 rcLossGrid.height + (_margins * 2)
+                    color:                  qgcPal.windowShade
+                    Row {
+                        id:                 rcLossGrid
+                        spacing:            _margins
+                        anchors.centerIn:   parent
+                        Item {
+                            width:                  _imageWidth
+                            height:                 _imageHeight
+                            anchors.verticalCenter: parent.verticalCenter
+                            Image {
+                                mipmap:             true
+                                fillMode:           Image.PreserveAspectFit
+                                source:             qgcPal.globalTheme === QGCPalette.Light ? "/qmlimages/RCLossLight.svg" : "/qmlimages/RCLoss.svg"
+                                height:             _imageHeight
+                                anchors.centerIn:   parent
+                            }
+                        }
+                        GridLayout {
+                            columns:                2
+                            anchors.verticalCenter: parent.verticalCenter
+
+                            QGCLabel {
+                                text:               qsTr("Failsafe Action:")
+                                Layout.minimumWidth:_labelWidth
+                                Layout.fillWidth:   true
+                            }
+                            FactComboBox {
+                                fact:               _rcLossAction
+                                indexModel:         false
+                                Layout.minimumWidth:_editFieldWidth
+                                Layout.fillWidth:   true
+                            }
+
+                            QGCLabel {
+                                text:               qsTr("RC Loss Timeout:")
+                                Layout.fillWidth:   true
+                            }
+                            FactTextField {
+                                fact:               controller.getParameterFact(-1, "COM_RC_LOSS_T")
+                                Layout.fillWidth:   true
+                            }
+                        }
+                    }
+                }
+
+                QGCLabel {
+                    text:                   qsTr("Data Link Loss Failsafe Trigger")
+                }
+
+                Rectangle {
+                    width:                  mainRow.width           + (_margins * 2)
+                    height:                 dataLinkLossGrid.height + (_margins * 2)
+                    color:                  qgcPal.windowShade
+                    Row {
+                        id:                 dataLinkLossGrid
+                        spacing:            _margins
+                        anchors.centerIn:   parent
+                        Item {
+                            width:                  _imageWidth
+                            height:                 _imageHeight
+                            anchors.verticalCenter: parent.verticalCenter
+                            Image {
+                                mipmap:             true
+                                fillMode:           Image.PreserveAspectFit
+                                source:             qgcPal.globalTheme === QGCPalette.Light ? "/qmlimages/DatalinkLossLight.svg" : "/qmlimages/DatalinkLoss.svg"
+                                height:             _imageHeight
+                                anchors.centerIn:   parent
+                            }
+                        }
+                        GridLayout {
+                            columns:                2
+                            anchors.verticalCenter: parent.verticalCenter
+
+                            QGCLabel {
+                                text:               qsTr("Failsafe Action:")
+                                Layout.minimumWidth:_labelWidth
+                                Layout.fillWidth:   true
+                            }
+                            FactComboBox {
+                                fact:               _dlLossAction
+                                indexModel:         false
+                                Layout.minimumWidth:_editFieldWidth
+                                Layout.fillWidth:   true
+                            }
+
+                            QGCLabel {
+                                text:               qsTr("Data Link Loss Timeout:")
+                                Layout.fillWidth:   true
+                            }
+                            FactTextField {
+                                fact:               controller.getParameterFact(-1, "COM_DL_LOSS_T")
+                                Layout.fillWidth:   true
+                            }
+                        }
+                    }
+                }
+
+                QGCLabel {
+                    text:                   qsTr("Geofence Failsafe Trigger")
+                }
+
+                Rectangle {
+                    width:                  mainRow.width       + (_margins * 2)
+                    height:                 geoFenceGrid.height + (_margins * 2)
+                    color:                  qgcPal.windowShade
+                    Row {
+                        id:                 geoFenceGrid
+                        spacing:            _margins
+                        anchors.centerIn:   parent
+                        Item {
+                            width:                  _imageWidth
+                            height:                 _imageHeight
+                            anchors.verticalCenter: parent.verticalCenter
+                            Image {
+                                mipmap:             true
+                                fillMode:           Image.PreserveAspectFit
+                                source:             qgcPal.globalTheme === QGCPalette.Light ? "/qmlimages/GeoFenceLight.svg" : "/qmlimages/GeoFence.svg"
+                                height:             _imageHeight
+                                anchors.centerIn:   parent
+                            }
+                        }
+
+                        GridLayout {
+                            columns:                2
+                            anchors.verticalCenter: parent.verticalCenter
+
+                            QGCLabel {
+                                text:               qsTr("Action on breach:")
+                                Layout.minimumWidth:_labelWidth
+                                Layout.fillWidth:   true
+                            }
+                            FactComboBox {
+                                fact:               _fenceAction
+                                indexModel:         false
+                                Layout.minimumWidth:_editFieldWidth
+                                Layout.fillWidth:   true
+                            }
+
+                            QGCCheckBox {
+                                id:                 fenceRadiusCheckBox
+                                text:               qsTr("Max Radius:")
+                                checked:            _fenceRadius.value > 0
+                                onClicked:          _fenceRadius.value = checked ? 100 : 0
+                                Layout.fillWidth:   true
+                            }
+                            FactTextField {
+                                fact:               _fenceRadius
+                                enabled:            fenceRadiusCheckBox.checked
+                                Layout.fillWidth:   true
+                            }
+
+                            QGCCheckBox {
+                                id:                 fenceAltMaxCheckBox
+                                text:               qsTr("Max Altitude:")
+                                checked:            _fenceAlt ? _fenceAlt.value > 0 : false
+                                onClicked:          _fenceAlt.value = checked ? 100 : 0
+                                Layout.fillWidth:   true
+                            }
+                            FactTextField {
+                                fact:               _fenceAlt
+                                enabled:            fenceAltMaxCheckBox.checked
+                                Layout.fillWidth:   true
+                            }
+                        }
+                    }
+                }
+
+                QGCLabel {
+                    text:               qsTr("Return Home Settings")
+                }
+
+                Rectangle {
+                    width:              mainRow.width         + (_margins * 2)
+                    height:             returnHomeGrid.height + (_margins * 2)
+                    color:              qgcPal.windowShade
+                    Row {
+                        id:                 returnHomeGrid
+                        spacing:            _margins
+                        anchors.centerIn:   parent
+                        Item {
+                            width:                  _imageWidth
+                            height:                 _imageHeight
+                            anchors.verticalCenter: parent.verticalCenter
+                            QGCColoredImage {
+                                color:              qgcPal.text
+                                source:             controller.vehicle.fixedWing ? "/qmlimages/ReturnToHomeAltitude.svg" : "/qmlimages/ReturnToHomeAltitudeCopter.svg"
+                                height:             _imageHeight
+                                width:              _imageHeight * 2
+                                anchors.centerIn:   parent
+                            }
+                        }
+                        GridLayout {
+                            columns:                    2
+                            anchors.verticalCenter:     parent.verticalCenter
+
+                            QGCLabel {
+                                text:                   qsTr("Climb to altitude of:")
+                                Layout.minimumWidth:    _labelWidth
+                                Layout.fillWidth:       true
+                            }
+                            FactTextField {
+                                fact:                   controller.getParameterFact(-1, "RTL_RETURN_ALT")
+                                Layout.minimumWidth:    _editFieldWidth
+                                Layout.fillWidth:       true
+                            }
+
+                            QGCLabel {
+                                text:                   qsTr("Return home, then:")
+                                Layout.columnSpan:      2
+                            }
+                            Row {
+                                Layout.columnSpan:      2
+                                Item { width: ScreenTools.defaultFontPixelWidth; height: 1 }
+                                QGCRadioButton {
+                                    id:                 homeLandRadio
+                                    checked:            _rtlLandDelay ? _rtlLandDelay.value === 0 : false
+                                    text:               qsTr("Land immediately")
+                                    onClicked:          _rtlLandDelay.value = 0
+                                }
+                            }
+                            Row {
+                                Layout.columnSpan:      2
+                                Item { width: ScreenTools.defaultFontPixelWidth; height: 1 }
+                                QGCRadioButton {
+                                    id:                 homeLoiterNoLandRadio
+                                    checked:            _rtlLandDelay ? _rtlLandDelay.value < 0 : false
+                                    text:               qsTr("Loiter and do not land")
+                                    onClicked:          _rtlLandDelay.value = -1
+                                }
+                            }
+                            Row {
+                                Layout.columnSpan:      2
+                                Item { width: ScreenTools.defaultFontPixelWidth; height: 1 }
+                                QGCRadioButton {
+                                    id:                 homeLoiterLandRadio
+                                    checked:            _rtlLandDelay ? _rtlLandDelay.value > 0 : false
+                                    text:               qsTr("Loiter and land after specified time")
+                                    onClicked:          _rtlLandDelay.value = 60
+                                }
+                            }
+
+                            QGCLabel {
+                                text:                   qsTr("Loiter Time")
+                                Layout.fillWidth:       true
+                            }
+                            FactTextField {
+                                fact:                   controller.getParameterFact(-1, "RTL_LAND_DELAY")
+                                enabled:                homeLoiterLandRadio.checked === true
+                                Layout.fillWidth:       true
+                            }
+
+                            QGCLabel {
+                                text:                   qsTr("Loiter Altitude")
+                                Layout.fillWidth:       true
+                            }
+                            FactTextField {
+                                fact:                   controller.getParameterFact(-1, "RTL_DESCEND_ALT")
+                                enabled:                homeLoiterLandRadio.checked === true || homeLoiterNoLandRadio.checked === true
+                                Layout.fillWidth:       true
+                            }
+                        }
+                    }
+                }
+
+                QGCLabel {
+                    text:               qsTr("Land Mode Settings")
+                }
+
+                Rectangle {
+                    width:              mainRow.width       + (_margins * 2)
+                    height:             landModeGrid.height + (_margins * 2)
+                    color:              qgcPal.windowShade
+                    Row {
+                        id:                 landModeGrid
+                        spacing:            _margins
+                        anchors.centerIn:   parent
+                        Item {
+                            width:                  _imageWidth
+                            height:                 _imageHeight
+                            anchors.verticalCenter: parent.verticalCenter
+                            QGCColoredImage {
+                                color:              qgcPal.text
+                                source:             controller.vehicle.fixedWing ? "/qmlimages/LandMode.svg" : "/qmlimages/LandModeCopter.svg"
+                                height:             _imageHeight
+                                width:              _imageHeight
+                                anchors.centerIn:   parent
+                            }
+                        }
+                        GridLayout {
+                            columns:                2
+                            anchors.verticalCenter: parent.verticalCenter
+
+                            QGCLabel {
+                                id:                 landVelocityLabel
+                                text:               qsTr("Landing Descent Rate:")
+                                visible:            controller.vehicle && !controller.vehicle.fixedWing
+                                Layout.minimumWidth:_labelWidth
+                                Layout.fillWidth:   true
+                            }
+                            FactTextField {
+                                fact:               _landSpeedMC
+                                visible:            controller.vehicle && !controller.vehicle.fixedWing
+                                Layout.minimumWidth:_editFieldWidth
+                                Layout.fillWidth:   true
+                            }
+
+                            QGCCheckBox {
+                                id:                 disarmDelayCheckBox
+                                text:               qsTr("Disarm After:")
+                                checked:            _disarmLandDelay.value > 0
+                                onClicked:          _disarmLandDelay.value = checked ? 2 : 0
+                                Layout.fillWidth:   true
+                            }
+                            FactTextField {
+                                fact:               _disarmLandDelay
+                                enabled:            disarmDelayCheckBox.checked
+                                Layout.fillWidth:   true
+                            }
+                        }
+                    }
+                }
+
+                QGCLabel {
+                    text:               qsTr("Vehicle Telemetry Logging")
+                }
+
+                Rectangle {
+                    width:              mainRow.width      + (_margins * 2)
+                    height:             loggingGrid.height + (_margins * 2)
+                    color:              qgcPal.windowShade
+                    Row {
+                        id:                 loggingGrid
+                        spacing:            _margins
+                        anchors.centerIn:   parent
+                        Item {
+                            width:                  _imageWidth
+                            height:                 _imageHeight
+                            anchors.verticalCenter: parent.verticalCenter
+                            Image {
+                                mipmap:             true
+                                fillMode:           Image.PreserveAspectFit
+                                source:             qgcPal.globalTheme === QGCPalette.Light ? "/qmlimages/no-logging-light.svg" : "/qmlimages/no-logging.svg"
+                                height:             _imageHeight
+                                anchors.centerIn:   parent
+                            }
+                        }
+                        GridLayout {
+                            columns:                2
+                            anchors.verticalCenter: parent.verticalCenter
+                            QGCLabel {
+                                text:               qsTr("Telemetry logging to vehicle storage:")
+                                Layout.minimumWidth:_labelWidth
+                                Layout.fillWidth:   true
+                            }
+                            QGCComboBox {
+                                model:              [qsTr("Disabled"), qsTr("Enabled")]
+                                enabled:            _enableLogging
+                                Layout.minimumWidth:_editFieldWidth
+                                Layout.fillWidth:   true
+                                Component.onCompleted: {
+                                    currentIndex = _enableLogging ? (_enableLogging.value >= 0 ? 1 : 0) : 0
+                                }
+                                onActivated: {
+                                    if(_enableLogging) {
+                                        _enableLogging.value = index > 0 ? 0 : -1
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                QGCLabel {
+                    text:               qsTr("Hardware in the Loop Simulation")
+                    visible:            _hitlAvailable
+                }
+
+                Rectangle {
+                    width:              mainRow.width   + (_margins * 2)
+                    height:             hitlGrid.height + (_margins * 2)
+                    color:              qgcPal.windowShade
+                    visible:            _hitlAvailable
+                    Row {
+                        id:                 hitlGrid
+                        spacing:            _margins
+                        anchors.centerIn:   parent
+                        Item {
+                            width:                  _imageWidth
+                            height:                 _imageHeight
+                            anchors.verticalCenter: parent.verticalCenter
+                            QGCColoredImage {
+                                color:              qgcPal.text
+                                source:             "/qmlimages/HITL.svg"
+                                height:             _imageHeight
+                                width:              _imageHeight
+                                anchors.centerIn:   parent
+                            }
+                        }
+                        GridLayout {
+                            columns:                2
+                            anchors.verticalCenter: parent.verticalCenter
+                            QGCLabel {
+                                text:               qsTr("HITL Enabled:")
+                                Layout.minimumWidth:_labelWidth
+                                Layout.fillWidth:   true
+                            }
+                            FactComboBox {
+                                fact:               _hitlEnabled
+                                indexModel:         false
+                                Layout.minimumWidth:_editFieldWidth
+                                Layout.fillWidth:   true
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

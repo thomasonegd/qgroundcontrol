@@ -18,7 +18,7 @@ class APMTuningComponent : public VehicleComponent
     Q_OBJECT
     
 public:
-    APMTuningComponent(Vehicle* vehicle, AutoPilotPlugin* autopilot, QObject* parent = NULL);
+    APMTuningComponent(Vehicle* vehicle, AutoPilotPlugin* autopilot, QObject* parent = nullptr);
     
     // Virtuals from VehicleComponent
     QStringList setupCompleteChangedTriggerList(void) const final;
@@ -31,7 +31,6 @@ public:
     bool setupComplete(void) const final;
     QUrl setupSource(void) const final;
     QUrl summaryQmlSource(void) const final;
-    QString prerequisiteSetup(void) const final;
     bool allowSetupWhileArmed(void) const final { return true; }
 
 private:

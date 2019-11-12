@@ -14,9 +14,9 @@
  *   @author Gus Grubba <mavlink@grubba.com>
  */
 
-import QtQuick 2.4
-import QtQuick.Controls 1.3
-import QGroundControl.QgcQtGStreamer 1.0
+import QtQuick                          2.11
+import QtQuick.Controls                 2.4
+import QGroundControl.QgcQtGStreamer    1.0
 
 VideoItem {
     id: videoBackground

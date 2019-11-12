@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   (c) 2009-2016 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
+ *   (c) 2009-2018 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
  *
  * QGroundControl is licensed according to the terms in the file
  * COPYING.md in the root of the source code directory.
@@ -13,8 +13,7 @@
 ///
 ///     @author Don Gagne <don@thegagnes.com>
 
-#ifndef TCPLINK_H
-#define TCPLINK_H
+#pragma once
 
 #include <QString>
 #include <QList>
@@ -97,10 +96,12 @@ public:
     /// From LinkConfiguration
     LinkType    type            () { return LinkConfiguration::TypeTcp; }
     void        copyFrom        (LinkConfiguration* source);
+    bool        isHighLatencyAllowed () { return true; }
     void        loadSettings    (QSettings& settings, const QString& root);
     void        saveSettings    (QSettings& settings, const QString& root);
     void        updateSettings  ();
     QString     settingsURL     () { return "TcpSettings.qml"; }
+    QString     settingsTitle   () { return tr("TCP Link Settings"); }
 
 signals:
     void portChanged();
@@ -121,7 +122,6 @@ class TCPLink : public LinkInterface
 
 public:
     QTcpSocket* getSocket(void) { return _socket; }
-    virtual LinkConfiguration* getLinkConfiguration() { return _config; }
 
     void signalBytesWritten(void);
 
@@ -160,7 +160,7 @@ protected:
 
 private:
     // Links are only created/destroyed by LinkManager so constructor/destructor is not public
-    TCPLink(TCPConfiguration* config);
+    TCPLink(SharedLinkConfigurationPointer& config);
     ~TCPLink();
 
     // From LinkInterface
@@ -174,7 +174,7 @@ private:
     void _writeDebugBytes(const QByteArray data);
 #endif
 
-    TCPConfiguration* _config;
+    TCPConfiguration* _tcpConfig;
     QTcpSocket*       _socket;
     bool              _socketIsConnected;
 
@@ -188,4 +188,3 @@ private:
     QMutex  _statisticsMutex;
 };
 
-#endif // TCPLINK_H

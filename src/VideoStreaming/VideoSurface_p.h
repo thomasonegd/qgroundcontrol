@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   (c) 2009-2016 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
+ *   (c) 2009-2018 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
  *
  * QGroundControl is licensed according to the terms in the file
  * COPYING.md in the root of the source code directory.
@@ -14,8 +14,7 @@
  *   @author Gus Grubba <mavlink@grubba.com>
  */
 
-#ifndef VIDEO_SURFACE_P_H
-#define VIDEO_SURFACE_P_H
+#pragma once
 
 #include "VideoSurface.h"
 #include "VideoItem.h"
@@ -24,11 +23,10 @@ class VideoSurfacePrivate
 {
 public:
     VideoSurfacePrivate()
-        : videoSink(NULL)
+        : videoSink(nullptr)
     {
     }
     QSet<VideoItem*> items;
     GstElement* videoSink;
 };
 
-#endif // VIDEO_SURFACE_P_H

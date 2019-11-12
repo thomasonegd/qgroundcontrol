@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   (c) 2009-2016 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
+ *   (c) 2009-2018 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
  *
  * QGroundControl is licensed according to the terms in the file
  * COPYING.md in the root of the source code directory.
@@ -8,8 +8,7 @@
  ****************************************************************************/
 
 
-#ifndef RadioConfigTest_H
-#define RadioConfigTest_H
+#pragma once
 
 #include "UnitTest.h"
 #include "MockLink.h"
@@ -76,7 +75,6 @@ private:
     void _stickMoveWaitForSettle(int channel, int value);
     void _stickMoveAutoStep(const char* functionStr, enum RadioComponentController::rcCalFunctions function, enum MoveToDirection direction, bool identifyStep);
     void _switchMinMaxStep(void);
-    void _switchSelectAutoStep(const char* functionStr, RadioComponentController::rcCalFunctions function);
     bool _px4Vehicle(void) const;
     const struct RadioComponentController::FunctionInfo* _functionInfo(void) const;
     const struct ChannelSettings* _channelSettings(void) const;
@@ -117,4 +115,3 @@ private:
     RadioComponentController*   _controller;
 };
 
-#endif

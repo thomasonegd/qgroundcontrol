@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   (c) 2009-2016 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
+ *   (c) 2009-2018 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
  *
  * QGroundControl is licensed according to the terms in the file
  * COPYING.md in the root of the source code directory.
@@ -8,11 +8,11 @@
  ****************************************************************************/
 
 
-#ifndef MOCKLINK_H
-#define MOCKLINK_H
+#pragma once
 
 #include <QMap>
 #include <QLoggingCategory>
+#include <QGeoCoordinate>
 
 #include "MockLinkMissionItemHandler.h"
 #include "MockLinkFileServer.h"
@@ -31,12 +31,15 @@ public:
     Q_PROPERTY(int      firmware    READ firmware           WRITE setFirmware       NOTIFY firmwareChanged)
     Q_PROPERTY(int      vehicle     READ vehicle            WRITE setVehicle        NOTIFY vehicleChanged)
     Q_PROPERTY(bool     sendStatus  READ sendStatusText     WRITE setSendStatusText NOTIFY sendStatusChanged)
+    Q_PROPERTY(bool     highLatency READ highLatency        WRITE setHighLatency    NOTIFY highLatencyChanged)
 
     // QML Access
     int     firmware        () { return (int)_firmwareType; }
     void    setFirmware     (int type) { _firmwareType = (MAV_AUTOPILOT)type; emit firmwareChanged(); }
     int     vehicle         () { return (int)_vehicleType; }
+    bool    highLatency     () const { return _highLatency; }
     void    setVehicle      (int type) { _vehicleType = (MAV_TYPE)type; emit vehicleChanged(); }
+    void    setHighLatency  (bool latency) { _highLatency = latency; emit highLatencyChanged(); }
 
     MockConfiguration(const QString& name);
     MockConfiguration(MockConfiguration* source);
@@ -67,21 +70,25 @@ public:
     void        saveSettings    (QSettings& settings, const QString& root);
     void        updateSettings  (void);
     QString     settingsURL     () { return "MockLinkSettings.qml"; }
+    QString     settingsTitle   () { return tr("Mock Link Settings"); }
 
 signals:
     void firmwareChanged    ();
     void vehicleChanged     ();
     void sendStatusChanged  ();
+    void highLatencyChanged ();
 
 private:
     MAV_AUTOPILOT   _firmwareType;
     MAV_TYPE        _vehicleType;
     bool            _sendStatusText;
+    bool            _highLatency;
     FailureMode_t   _failureMode;
 
     static const char* _firmwareTypeKey;
     static const char* _vehicleTypeKey;
     static const char* _sendStatusTextKey;
+    static const char* _highLatencyKey;
     static const char* _failureModeKey;
 };
 
@@ -90,8 +97,7 @@ class MockLink : public LinkInterface
     Q_OBJECT
 
 public:
-    // LinkConfiguration is optional for MockLink
-    MockLink(MockConfiguration* config = NULL);
+    MockLink(SharedLinkConfigurationPointer& config);
     ~MockLink(void);
 
     // MockLink methods
@@ -126,8 +132,6 @@ public:
     bool connect(void);
     bool disconnect(void);
 
-    LinkConfiguration* getLinkConfiguration() { return _config; }
-
     /// Sets a failure mode for unit testing
     ///     @param failureMode Type of failure to simulate
     void setMissionItemFailureMode(MockLinkMissionItemHandler::FailureMode_t failureMode);
@@ -144,7 +148,7 @@ public:
     /// Reset the state of the MissionItemHandler to no items, no transactions in progress.
     void resetMissionItemHandler(void) { _missionItemHandler.reset(); }
 
-    /// Returns the filename for the simulated log file. Onyl available after a download is requested.
+    /// Returns the filename for the simulated log file. Only available after a download is requested.
     QString logDownloadFile(void) { return _logDownloadFilename; }
 
     static MockLink* startPX4MockLink            (bool sendStatusText, MockConfiguration::FailureMode_t failureMode = MockConfiguration::FailNone);
@@ -152,6 +156,7 @@ public:
     static MockLink* startAPMArduCopterMockLink  (bool sendStatusText, MockConfiguration::FailureMode_t failureMode = MockConfiguration::FailNone);
     static MockLink* startAPMArduPlaneMockLink   (bool sendStatusText, MockConfiguration::FailureMode_t failureMode = MockConfiguration::FailNone);
     static MockLink* startAPMArduSubMockLink     (bool sendStatusText, MockConfiguration::FailureMode_t failureMode = MockConfiguration::FailNone);
+    static MockLink* startAPMArduRoverMockLink   (bool sendStatusText, MockConfiguration::FailureMode_t failureMode = MockConfiguration::FailNone);
 
 private slots:
     virtual void _writeBytes(const QByteArray bytes);
@@ -171,6 +176,7 @@ private:
 
     // MockLink methods
     void _sendHeartBeat(void);
+    void _sendHighLatency2(void);
     void _handleIncomingNSHBytes(const char* bytes, int cBytes);
     void _handleIncomingMavlinkBytes(const uint8_t* bytes, int cBytes);
     void _loadParams(void);
@@ -190,18 +196,23 @@ private:
     void _sendHomePosition(void);
     void _sendGpsRawInt(void);
     void _sendVibration(void);
+    void _sendSysStatus(void);
     void _sendStatusTextMessages(void);
     void _respondWithAutopilotVersion(void);
     void _sendRCChannels(void);
     void _paramRequestListWorker(void);
     void _logDownloadWorker(void);
+    void _sendADSBVehicles(void);
+    void _moveADSBVehicle(void);
 
+    static MockLink* _startMockLinkWorker(QString configName, MAV_AUTOPILOT firmwareType, MAV_TYPE vehicleType, bool sendStatusText, MockConfiguration::FailureMode_t failureMode);
     static MockLink* _startMockLink(MockConfiguration* mockConfig);
 
     MockLinkMissionItemHandler  _missionItemHandler;
 
     QString _name;
     bool    _connected;
+    int     _mavlinkChannel;
 
     uint8_t _vehicleSystemId;
     uint8_t _vehicleComponentId;
@@ -209,16 +220,21 @@ private:
     bool    _inNSH;
     bool    _mavlinkStarted;
 
-    QMap<int, QMap<QString, QVariant> > _mapParamName2Value;
-    QMap<QString, MAV_PARAM_TYPE>       _mapParamName2MavParamType;
+    QMap<int, QMap<QString, QVariant>>          _mapParamName2Value;
+    QMap<int, QMap<QString, MAV_PARAM_TYPE>>    _mapParamName2MavParamType;
 
     uint8_t     _mavBaseMode;
     uint32_t    _mavCustomMode;
     uint8_t     _mavState;
 
-    MockConfiguration*  _config;
+    QTime       _runningTime;
+    int8_t      _batteryRemaining = 100;
+
     MAV_AUTOPILOT       _firmwareType;
     MAV_TYPE            _vehicleType;
+    double              _vehicleLatitude;
+    double              _vehicleLongitude;
+    double              _vehicleAltitude;
 
     MockLinkFileServer* _fileServer;
 
@@ -239,11 +255,13 @@ private:
     uint32_t    _logDownloadCurrentOffset;  ///< Current offset we are sending from
     uint32_t    _logDownloadBytesRemaining; ///< Number of bytes still to send, 0 = send inactive
 
-    static float        _vehicleLatitude;
-    static float        _vehicleLongitude;
-    static float        _vehicleAltitude;
+    QGeoCoordinate  _adsbVehicleCoordinate;
+    double          _adsbAngle;
+
+    static double       _defaultVehicleLatitude;
+    static double       _defaultVehicleLongitude;
+    static double       _defaultVehicleAltitude;
     static int          _nextVehicleSystemId;
     static const char*  _failParam;
 };
 
-#endif

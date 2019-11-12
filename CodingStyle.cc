@@ -7,7 +7,6 @@
  *
  ****************************************************************************/
 
-
 // This is an example class c++ file which is used to describe the QGroundControl
 // coding style. In general almost everything in here has some coding style meaning.
 // Not all style choices are explained.
@@ -86,8 +85,11 @@ void CodingStyle::_methodWithManyArguments(QWidget*         parent,
                                            const QString&   caption,
                                            const QString&   dir,
                                            Options          options1,
-                                           Options          options2,
+                                           Options          /* options2 */,
                                            Options          options3)
 {
+    // options2 is an unused method argument.
+    // Do not use Q_UNUSUED and do not just remove the argument name and leave the type.
+
     // Implementataion here...
 }

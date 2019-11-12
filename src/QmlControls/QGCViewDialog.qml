@@ -7,31 +7,24 @@
  *
  ****************************************************************************/
 
+import QtQuick          2.3
+import QtQuick.Controls 1.2
 
-/// @file
-///     @author Don Gagne <don@thegagnes.com>
+import QGroundControl.Controls      1.0
+import QGroundControl.Palette       1.0
+import QGroundControl.FactSystem    1.0
+import QGroundControl.FactControls  1.0
+import QGroundControl.ScreenTools   1.0
 
-import QtQuick 2.3
-import QtQuick.Controls 1.3
-
-import QGroundControl.Controls 1.0
-import QGroundControl.Palette 1.0
-
-import QGroundControl.FactSystem 1.0
-import QGroundControl.FactControls 1.0
-
-FactPanel {
-    property var qgcTextFieldforwardKeysTo: this    ///< Causes all QGCTextFields to forward keys here if they have focus
-
-    QGCPalette { id: __qgcPal; colorGroupEnabled: enabled }
+Item {
 
     signal hideDialog
 
     Keys.onReleased: {
-        if (event.key == Qt.Key_Escape) {
+        if (event.key === Qt.Key_Escape) {
             reject()
             event.accepted = true
-        } else if (event.key == Qt.Key_Return) {
+        } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
             accept()
             event.accepted = true
         }
@@ -51,5 +44,4 @@ FactPanel {
         }
     }
 
-    color: __qgcPal.windowShadeDark
 }

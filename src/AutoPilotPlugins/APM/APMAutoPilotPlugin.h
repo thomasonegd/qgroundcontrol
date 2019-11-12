@@ -15,16 +15,19 @@
 #include "Vehicle.h"
 
 class APMAirframeComponent;
-class APMAirframeLoader;
 class APMFlightModesComponent;
 class APMRadioComponent;
 class APMTuningComponent;
 class APMSafetyComponent;
 class APMSensorsComponent;
 class APMPowerComponent;
-class MotorComponent;
+class APMMotorComponent;
 class APMCameraComponent;
+class APMLightsComponent;
+class APMSubFrameComponent;
 class ESP8266Component;
+class APMHeliComponent;
+class APMFollowComponent;
 
 /// This is the APM specific implementation of the AutoPilot class.
 class APMAutoPilotPlugin : public AutoPilotPlugin
@@ -36,44 +39,33 @@ public:
     ~APMAutoPilotPlugin();
 
     // Overrides from AutoPilotPlugin
-    const QVariantList& vehicleComponents(void) final;
+    const QVariantList& vehicleComponents(void) override;
+    QString prerequisiteSetup(VehicleComponent* component) const override;
 
-    APMAirframeComponent*       airframeComponent   (void) const { return _airframeComponent; }
-    APMCameraComponent*         cameraComponent     (void) const { return _cameraComponent; }
-    APMFlightModesComponent*    flightModesComponent(void) const { return _flightModesComponent; }
-    APMPowerComponent*          powerComponent      (void) const { return _powerComponent; }
-#if 0
-    // Temporarily removed, waiting for new command implementation
-    MotorComponent*             motorComponent      (void) const { return _motorComponent; }
-#endif
-    APMRadioComponent*          radioComponent      (void) const { return _radioComponent; }
-    APMSafetyComponent*         safetyComponent     (void) const { return _safetyComponent; }
-    APMSensorsComponent*        sensorsComponent    (void) const { return _sensorsComponent; }
-    APMTuningComponent*         tuningComponent     (void) const { return _tuningComponent; }
-    ESP8266Component*           esp8266Component    (void) const { return _esp8266Component; }
-
-public slots:
-    // FIXME: This is public until we restructure AutoPilotPlugin/FirmwarePlugin/Vehicle
-    void _parametersReadyPreChecks(bool missingParameters);
-
-private:
-    bool                    _incorrectParameterVersion; ///< true: parameter version incorrect, setup not allowed
-    QVariantList            _components;
-
+protected:
+    bool                        _incorrectParameterVersion; ///< true: parameter version incorrect, setup not allowed
     APMAirframeComponent*       _airframeComponent;
     APMCameraComponent*         _cameraComponent;
+    APMLightsComponent*         _lightsComponent;
+    APMSubFrameComponent*       _subFrameComponent;
     APMFlightModesComponent*    _flightModesComponent;
     APMPowerComponent*          _powerComponent;
-#if 0
-    // Temporarily removed, waiting for new command implementation
-    MotorComponent*             _motorComponent;
-#endif
+    APMMotorComponent*          _motorComponent;
     APMRadioComponent*          _radioComponent;
     APMSafetyComponent*         _safetyComponent;
     APMSensorsComponent*        _sensorsComponent;
     APMTuningComponent*         _tuningComponent;
-    APMAirframeLoader*          _airframeFacts;
     ESP8266Component*           _esp8266Component;
+    APMHeliComponent*           _heliComponent;
+    APMFollowComponent*         _followComponent;
+
+#if !defined(NO_SERIAL_LINK) && !defined(__android__)
+private slots:
+    void _checkForBadCubeBlack(void);
+#endif
+
+private:
+    QVariantList                _components;
 };
 
 #endif

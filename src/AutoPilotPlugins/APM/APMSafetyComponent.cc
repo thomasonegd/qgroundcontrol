@@ -12,7 +12,6 @@
 ///     @author Don Gagne <don@thegagnes.com>
 
 #include "APMSafetyComponent.h"
-#include "QGCQmlWidgetHolder.h"
 #include "APMAutoPilotPlugin.h"
 #include "APMAirframeComponent.h"
 
@@ -29,7 +28,22 @@ QString APMSafetyComponent::name(void) const
 
 QString APMSafetyComponent::description(void) const
 {
-    return tr("The Safety Component is used to setup triggers for Return to Land as well as the settings for Return to Land itself.");
+    switch (_vehicle->vehicleType()) {
+    case MAV_TYPE_SUBMARINE:
+        return tr("Safety Setup is used to setup failsafe actions, leak detection, and arming checks.");
+        break;
+    case MAV_TYPE_GROUND_ROVER:
+    case MAV_TYPE_FIXED_WING:
+    case MAV_TYPE_QUADROTOR:
+    case MAV_TYPE_COAXIAL:
+    case MAV_TYPE_HELICOPTER:
+    case MAV_TYPE_HEXAROTOR:
+    case MAV_TYPE_OCTOROTOR:
+    case MAV_TYPE_TRICOPTER:
+    default:
+        return tr("Safety Setup is used to setup triggers for Return to Land as well as the settings for Return to Land itself.");
+        break;
+    }
 }
 
 QString APMSafetyComponent::iconResource(void) const
@@ -58,23 +72,22 @@ QUrl APMSafetyComponent::setupSource(void) const
     QString qmlFile;
 
     switch (_vehicle->vehicleType()) {
-        case MAV_TYPE_FIXED_WING:
-            qmlFile = QStringLiteral("qrc:/qml/APMSafetyComponentPlane.qml");
-            break;
-        case MAV_TYPE_QUADROTOR:
-        case MAV_TYPE_COAXIAL:
-        case MAV_TYPE_HELICOPTER:
-        case MAV_TYPE_HEXAROTOR:
-        case MAV_TYPE_OCTOROTOR:
-        case MAV_TYPE_TRICOPTER:
-            qmlFile = QStringLiteral("qrc:/qml/APMSafetyComponentCopter.qml");
-            break;
-        case MAV_TYPE_GROUND_ROVER:
-            qmlFile = QStringLiteral("qrc:/qml/APMSafetyComponentRover.qml");
-            break;
-        default:
-            qmlFile = QStringLiteral("qrc:/qml/APMNotSupported.qml");
-            break;
+    case MAV_TYPE_FIXED_WING:
+    case MAV_TYPE_QUADROTOR:
+    case MAV_TYPE_COAXIAL:
+    case MAV_TYPE_HELICOPTER:
+    case MAV_TYPE_HEXAROTOR:
+    case MAV_TYPE_OCTOROTOR:
+    case MAV_TYPE_TRICOPTER:
+    case MAV_TYPE_GROUND_ROVER:
+        qmlFile = QStringLiteral("qrc:/qml/APMSafetyComponent.qml");
+        break;
+    case MAV_TYPE_SUBMARINE:
+        qmlFile = QStringLiteral("qrc:/qml/APMSafetyComponentSub.qml");
+        break;
+    default:
+        qmlFile = QStringLiteral("qrc:/qml/APMNotSupported.qml");
+        break;
     }
 
     return QUrl::fromUserInput(qmlFile);
@@ -85,36 +98,23 @@ QUrl APMSafetyComponent::summaryQmlSource(void) const
     QString qmlFile;
 
     switch (_vehicle->vehicleType()) {
-        case MAV_TYPE_FIXED_WING:
-            qmlFile = QStringLiteral("qrc:/qml/APMSafetyComponentSummaryPlane.qml");
-            break;
-        case MAV_TYPE_QUADROTOR:
-        case MAV_TYPE_COAXIAL:
-        case MAV_TYPE_HELICOPTER:
-        case MAV_TYPE_HEXAROTOR:
-        case MAV_TYPE_OCTOROTOR:
-        case MAV_TYPE_TRICOPTER:
-            qmlFile = QStringLiteral("qrc:/qml/APMSafetyComponentSummaryCopter.qml");
-            break;
-        case MAV_TYPE_GROUND_ROVER:
-            qmlFile = QStringLiteral("qrc:/qml/APMSafetyComponentSummaryRover.qml");
-            break;
-        default:
-            qmlFile = QStringLiteral("qrc:/qml/APMNotSupported.qml");
-            break;
+    case MAV_TYPE_FIXED_WING:
+    case MAV_TYPE_QUADROTOR:
+    case MAV_TYPE_COAXIAL:
+    case MAV_TYPE_HELICOPTER:
+    case MAV_TYPE_HEXAROTOR:
+    case MAV_TYPE_OCTOROTOR:
+    case MAV_TYPE_TRICOPTER:
+    case MAV_TYPE_GROUND_ROVER:
+        qmlFile = QStringLiteral("qrc:/qml/APMSafetyComponentSummary.qml");
+        break;
+    case MAV_TYPE_SUBMARINE:
+        qmlFile = QStringLiteral("qrc:/qml/APMSafetyComponentSummarySub.qml");
+        break;
+    default:
+        qmlFile = QStringLiteral("qrc:/qml/APMNotSupported.qml");
+        break;
     }
 
     return QUrl::fromUserInput(qmlFile);
-}
-
-QString APMSafetyComponent::prerequisiteSetup(void) const
-{
-    APMAutoPilotPlugin* plugin = dynamic_cast<APMAutoPilotPlugin*>(_autopilot);
-    Q_ASSERT(plugin);
-
-    if (!plugin->airframeComponent()->setupComplete()) {
-        return plugin->airframeComponent()->name();
-    }
-
-    return QString();
 }

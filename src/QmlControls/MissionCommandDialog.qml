@@ -8,8 +8,8 @@
  ****************************************************************************/
 
 
-import QtQuick                  2.5
-import QtQuick.Controls         1.4
+import QtQuick                  2.3
+import QtQuick.Controls         1.2
 
 import QGroundControl               1.0
 import QGroundControl.Controls      1.0
@@ -20,6 +20,7 @@ QGCViewDialog {
     id: root
 
     property var missionItem
+    property var map
 
     property var _vehicle: QGroundControl.multiVehicleManager.activeVehicle
 
@@ -51,7 +52,7 @@ QGCViewDialog {
         onActivated: categorySelected(textAt(index))
     }
 
-    ListView {
+    QGCListView {
         id:                 commandList
         anchors.margins:    ScreenTools.defaultFontPixelHeight
         anchors.left:       parent.left
@@ -68,7 +69,7 @@ QGCViewDialog {
             color:  qgcPal.button
 
             property var    mavCmdInfo: modelData
-            property var    textColor:  qgcPal.buttonText
+            property color  textColor:  qgcPal.buttonText
 
             Column {
                 id:                 commandColumn
@@ -96,10 +97,11 @@ QGCViewDialog {
             MouseArea {
                 anchors.fill:   parent
                 onClicked: {
+                        missionItem.setMapCenterHintForCommandChange(map.center)
                     missionItem.command = mavCmdInfo.command
                     root.reject()
                 }
             }
         }
-    } // ListView
+    } // QGCListView
 } // QGCViewDialog

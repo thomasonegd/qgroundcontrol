@@ -11,43 +11,78 @@
 #define ComplexMissionItem_H
 
 #include "VisualMissionItem.h"
+#include "QGCGeo.h"
+
+#include <QSettings>
 
 class ComplexMissionItem : public VisualMissionItem
 {
     Q_OBJECT
 
 public:
-    ComplexMissionItem(Vehicle* vehicle, QObject* parent = NULL);
+    ComplexMissionItem(Vehicle* vehicle, bool flyView, QObject* parent);
 
     const ComplexMissionItem& operator=(const ComplexMissionItem& other);
 
-    Q_PROPERTY(int      lastSequenceNumber  READ lastSequenceNumber NOTIFY lastSequenceNumberChanged)
-    Q_PROPERTY(double   complexDistance     READ complexDistance    NOTIFY complexDistanceChanged)
+    Q_PROPERTY(double       complexDistance     READ complexDistance                            NOTIFY complexDistanceChanged)
+    Q_PROPERTY(bool         presetsSupported    READ presetsSupported                           CONSTANT)
+    Q_PROPERTY(QStringList  presetNames         READ presetNames                                NOTIFY presetNamesChanged)
 
     /// @return The distance covered the complex mission item in meters.
+    /// Signals complexDistanceChanged
     virtual double complexDistance(void) const = 0;
-
-    /// @return The last sequence number used by this item. Takes into account child items of the complex item
-    virtual int lastSequenceNumber(void) const = 0;
-
-    /// Returns the mission items associated with the complex item. Caller is responsible for freeing. Calling
-    /// delete on returned QmlObjectListModel will free all memory including internal items.
-    virtual QmlObjectListModel* getMissionItems(void) const = 0;
 
     /// Load the complex mission item from Json
     ///     @param complexObject Complex mission item json object
+    ///     @param sequenceNumber Sequence number for first MISSION_ITEM in survey
     ///     @param[out] errorString Error if load fails
     /// @return true: load success, false: load failed, errorString set
-    virtual bool load(const QJsonObject& complexObject, QString& errorString) = 0;
+    virtual bool load(const QJsonObject& complexObject, int sequenceNumber, QString& errorString) = 0;
+
+    /// Loads the specified preset into the complex item.
+    ///     @param name Preset name.
+    Q_INVOKABLE virtual void loadPreset(const QString& name);
+
+    /// Saves the current state of the complex item as the named preset.
+    ///     @param name User visible name for preset. Will replace existing preset if already exists.
+    Q_INVOKABLE virtual void savePreset(const QString& name);
+
+     Q_INVOKABLE void deletePreset(const QString& name);
+
 
     /// Get the point of complex mission item furthest away from a coordinate
     ///     @param other QGeoCoordinate to which distance is calculated
     /// @return the greatest distance from any point of the complex item to some coordinate
+    /// Signals greatestDistanceToChanged
     virtual double greatestDistanceTo(const QGeoCoordinate &other) const = 0;
 
+    /// Returns the list of currently saved presets for this complex item type.
+    ///     @param name User visible name for preset. Will replace existing preset if already exists.
+    virtual QStringList presetNames(void);
+
+    /// Returns the name of the settings group for presets.
+    ///     Empty string signals no support for presets.
+    virtual QString presetsSettingsGroup(void) { return QString(); }
+
+    bool presetsSupported(void) { return !presetsSettingsGroup().isEmpty(); }
+
+    /// This mission item attribute specifies the type of the complex item.
+    static const char* jsonComplexItemTypeKey;
+
 signals:
-    void lastSequenceNumberChanged  (int lastSequenceNumber);
-    void complexDistanceChanged     (double complexDistance);
+    void complexDistanceChanged     (void);
+    void boundingCubeChanged        (void);
+    void greatestDistanceToChanged  (void);
+    void presetNamesChanged         (void);
+
+protected:
+    void        _savePresetJson (const QString& name, QJsonObject& presetObject);
+    QJsonObject _loadPresetJson (const QString& name);
+
+
+    QMap<QString, FactMetaData*> _metaDataMap;
+
+    static const char* _presetSettingsKey;
 };
 
 #endif

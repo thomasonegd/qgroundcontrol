@@ -7,24 +7,26 @@
  *
  ****************************************************************************/
 
-
-/// @file
-///     @author Don Gagne <don@thegagnes.com>
-
 #include "APMAirframeComponent.h"
 #include "ArduCopterFirmwarePlugin.h"
+#include "ParameterManager.h"
+
+const char* APMAirframeComponent::_frameClassParam = "FRAME_CLASS";
 
 APMAirframeComponent::APMAirframeComponent(Vehicle* vehicle, AutoPilotPlugin* autopilot, QObject* parent)
-    : VehicleComponent(vehicle, autopilot, parent)
-    , _requiresFrameSetup(false)
-    , _name("Airframe")
+    : VehicleComponent      (vehicle, autopilot, parent)
+    , _requiresFrameSetup   (false)
+    , _name                 (tr("Frame"))
 {
-    if (qobject_cast<ArduCopterFirmwarePlugin*>(_vehicle->firmwarePlugin()) != NULL) {
-        _requiresFrameSetup = true;
-        MAV_TYPE vehicleType = vehicle->vehicleType();
-        if (vehicleType == MAV_TYPE_TRICOPTER || vehicleType == MAV_TYPE_HELICOPTER) {
-            _requiresFrameSetup = false;
+    ParameterManager* paramMgr = vehicle->parameterManager();
+
+    if (paramMgr->parameterExists(FactSystem::defaultComponentId, _frameClassParam)) {
+        _frameClassFact = paramMgr->getParameter(FactSystem::defaultComponentId, _frameClassParam);
+        if (vehicle->vehicleType() != MAV_TYPE_HELICOPTER) {
+            _requiresFrameSetup = true;
         }
+    } else {
+        _frameClassFact = nullptr;
     }
 }
 
@@ -35,8 +37,7 @@ QString APMAirframeComponent::name(void) const
 
 QString APMAirframeComponent::description(void) const
 {
-    return tr("The Airframe Component is used to select the airframe which matches your vehicle. "
-              "This will in turn set up the various tuning values for flight parameters.");
+    return tr("Frame Setup is used to select the airframe which matches your vehicle.");
 }
 
 QString APMAirframeComponent::iconResource(void) const
@@ -52,7 +53,7 @@ bool APMAirframeComponent::requiresSetup(void) const
 bool APMAirframeComponent::setupComplete(void) const
 {
     if (_requiresFrameSetup) {
-        return _autopilot->getParameterFact(FactSystem::defaultComponentId, QStringLiteral("FRAME"))->rawValue().toInt() >= 0;
+        return _frameClassFact->rawValue().toInt() != 0;
     } else {
         return true;
     }
@@ -63,7 +64,7 @@ QStringList APMAirframeComponent::setupCompleteChangedTriggerList(void) const
     QStringList list;
 
     if (_requiresFrameSetup) {
-        list << QStringLiteral("FRAME");
+        list << _frameClassParam;
     }
 
     return list;
@@ -85,9 +86,4 @@ QUrl APMAirframeComponent::summaryQmlSource(void) const
     } else {
         return QUrl();
     }
-}
-
-QString APMAirframeComponent::prerequisiteSetup(void) const
-{
-    return QString();
 }

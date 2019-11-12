@@ -8,9 +8,9 @@
  ****************************************************************************/
 
 
-import QtQuick 2.5
+import QtQuick 2.3
 import QtQuick.Controls 1.2
-import QtQuick.Controls.Styles 1.2
+import QtQuick.Controls.Styles 1.4
 import QtQuick.Dialogs 1.2
 
 import QGroundControl.FactSystem 1.0
@@ -22,7 +22,43 @@ import QGroundControl.ScreenTools 1.0
 
 SetupPage {
     id:             airframePage
-    pageComponent:  pageComponent
+    pageComponent:  (controller && controller.showCustomConfigPanel) ? customFrame : pageComponent
+
+    AirframeComponentController {
+        id:         controller
+    }
+
+    Component {
+        id: customFrame
+        Column {
+            width:          availableWidth
+            spacing:        ScreenTools.defaultFontPixelHeight * 4
+            Item {
+                width:      1
+                height:     1
+            }
+            QGCLabel {
+                anchors.horizontalCenter: parent.horizontalCenter
+                width:      parent.width * 0.5
+                height:     ScreenTools.defaultFontPixelHeight * 4
+                wrapMode:   Text.WordWrap
+                text:       qsTr("Your vehicle is using a custom airframe configuration. ") +
+                            qsTr("This configuration can only be modified through the Parameter Editor.\n\n") +
+                            qsTr("If you want to reset your airframe configuration and select a standard configuration, click 'Reset' below.")
+            }
+            QGCButton {
+                text:       qsTr("Reset")
+                enabled:    sys_autostart
+                anchors.horizontalCenter: parent.horizontalCenter
+                property Fact sys_autostart: controller.getParameterFact(-1, "SYS_AUTOSTART")
+                onClicked: {
+                    if(sys_autostart) {
+                        sys_autostart.value = 0
+                    }
+                }
+            }
+        }
+    }
 
     Component {
         id: pageComponent
@@ -61,35 +97,6 @@ SetupPage {
                 }
             }
 
-            AirframeComponentController {
-                id:         controller
-                factPanel:  airframePage.viewPanel
-
-                Component.onCompleted: {
-                    if (controller.showCustomConfigPanel) {
-                        showDialog(customConfigDialogComponent, qsTr("Custom Airframe Config"), qgcView.showDialogDefaultWidth, StandardButton.Reset)
-                    }
-                }
-            }
-
-            Component {
-                id: customConfigDialogComponent
-
-                QGCViewMessage {
-                    id:       customConfigDialog
-                    message:  qsTr("Your vehicle is using a custom airframe configuration. ") +
-                              qsTr("This configuration can only be modified through the Parameter Editor.\n\n") +
-                              qsTr("If you want to reset your airframe configuration and select a standard configuration, click 'Reset' above.")
-
-                    property Fact sys_autostart: controller.getParameterFact(-1, "SYS_AUTOSTART")
-
-                    function accept() {
-                        sys_autostart.value = 0
-                        customConfigDialog.hideDialog()
-                    }
-                }
-            }
-
             Component {
                 id: applyRestartDialogComponent
 
@@ -104,8 +111,9 @@ SetupPage {
                     QGCLabel {
                         anchors.fill:   parent
                         wrapMode:       Text.WordWrap
-                        text:           qsTr("Clicking “Apply” will save the changes you have made to your airframe configuration. ") +
-                                        qsTr("Your vehicle will also be restarted in order to complete the process.")
+                        text:           qsTr("Clicking “Apply” will save the changes you have made to your airframe configuration.<br><br>\
+All vehicle parameters other than Radio Calibration will be reset.<br><br>\
+Your vehicle will also be restarted in order to complete the process.")
                     }
                 }
             }
@@ -132,7 +140,7 @@ SetupPage {
                     anchors.right:  parent.right
                     text:           qsTr("Apply and Restart")
 
-                    onClicked:      showDialog(applyRestartDialogComponent, qsTr("Apply and Restart"), qgcView.showDialogDefaultWidth, StandardButton.Apply | StandardButton.Cancel)
+                    onClicked:      mainWindow.showComponentDialog(applyRestartDialogComponent, qsTr("Apply and Restart"), mainWindow.showDialogDefaultWidth, StandardButton.Apply | StandardButton.Cancel)
                 }
             }
 
@@ -201,12 +209,13 @@ SetupPage {
                             QGCCheckBox {
                                 // Although this item is invisible we still use it to manage state
                                 id:             airframeCheckBox
-                                checked:        modelData.name == controller.currentAirframeType
+                                checked:        modelData.name === controller.currentAirframeType
                                 exclusiveGroup: airframeTypeExclusive
                                 visible:        false
 
                                 onCheckedChanged: {
-                                    if (checked && combo.currentIndex != -1) {
+                                    if (checked && combo.currentIndex !== -1) {
+                                        console.log("check box change", combo.currentIndex)
                                         controller.autostartId = modelData.airframes[combo.currentIndex].autostartId
                                     }
                                 }
@@ -220,6 +229,7 @@ SetupPage {
                                 anchors.left:       parent.left
                                 anchors.right:      parent.right
                                 model:              modelData.airframes
+                                textRole:           "text"
 
                                 Component.onCompleted: {
                                     if (airframeCheckBox.checked) {
@@ -229,8 +239,9 @@ SetupPage {
 
                                 onActivated: {
                                     applyButton.primary = true
-                                    controller.autostartId = modelData.airframes[index].autostartId
                                     airframeCheckBox.checked = true;
+                                    console.log("combo change", index)
+                                    controller.autostartId = modelData.airframes[index].autostartId
                                 }
                             }
                         }

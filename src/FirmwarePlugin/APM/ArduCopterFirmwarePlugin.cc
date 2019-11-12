@@ -14,6 +14,7 @@
 #include "ArduCopterFirmwarePlugin.h"
 #include "QGCApplication.h"
 #include "MissionManager.h"
+#include "ParameterManager.h"
 
 bool ArduCopterFirmwarePlugin::_remapParamNameIntialized = false;
 FirmwarePlugin::remapParamNameMajorVersionMap_t ArduCopterFirmwarePlugin::_remapParamName;
@@ -21,185 +22,99 @@ FirmwarePlugin::remapParamNameMajorVersionMap_t ArduCopterFirmwarePlugin::_remap
 APMCopterMode::APMCopterMode(uint32_t mode, bool settable) :
     APMCustomMode(mode, settable)
 {
-    QMap<uint32_t,QString> enumToString;
-    enumToString.insert(STABILIZE, "Stabilize");
-    enumToString.insert(ACRO,      "Acro");
-    enumToString.insert(ALT_HOLD,  "Alt Hold");
-    enumToString.insert(AUTO,      "Auto");
-    enumToString.insert(GUIDED,    "Guided");
-    enumToString.insert(LOITER,    "Loiter");
-    enumToString.insert(RTL,       "RTL");
-    enumToString.insert(CIRCLE,    "Circle");
-    enumToString.insert(POSITION,  "Position");
-    enumToString.insert(LAND,      "Land");
-    enumToString.insert(OF_LOITER, "OF Loiter");
-    enumToString.insert(DRIFT,     "Drift");
-    enumToString.insert(SPORT,     "Sport");
-    enumToString.insert(FLIP,      "Flip");
-    enumToString.insert(AUTOTUNE,  "Autotune");
-    enumToString.insert(POS_HOLD,  "Pos Hold");
-    enumToString.insert(BRAKE,     "Brake");
-
-    setEnumToStringMapping(enumToString);
+    setEnumToStringMapping({
+        { STABILIZE,    "Stabilize"},
+        { ACRO,         "Acro"},
+        { ALT_HOLD,     "Altitude Hold"},
+        { AUTO,         "Auto"},
+        { GUIDED,       "Guided"},
+        { LOITER,       "Loiter"},
+        { RTL,          "RTL"},
+        { CIRCLE,       "Circle"},
+        { LAND,         "Land"},
+        { DRIFT,        "Drift"},
+        { SPORT,        "Sport"},
+        { FLIP,         "Flip"},
+        { AUTOTUNE,     "Autotune"},
+        { POS_HOLD,     "Position Hold"},
+        { BRAKE,        "Brake"},
+        { THROW,        "Throw"},
+        { AVOID_ADSB,   "Avoid ADSB"},
+        { GUIDED_NOGPS, "Guided No GPS"},
+        { SMART_RTL,    "Smart RTL"},
+        { FLOWHOLD,     "Flow Hold" },
+        { FOLLOW,       "Follow" },
+        { ZIGZAG,       "ZigZag" },
+    });
 }
 
 ArduCopterFirmwarePlugin::ArduCopterFirmwarePlugin(void)
 {
-    QList<APMCustomMode> supportedFlightModes;
-    supportedFlightModes << APMCopterMode(APMCopterMode::STABILIZE ,true);
-    supportedFlightModes << APMCopterMode(APMCopterMode::ACRO      ,true);
-    supportedFlightModes << APMCopterMode(APMCopterMode::ALT_HOLD  ,true);
-    supportedFlightModes << APMCopterMode(APMCopterMode::AUTO      ,true);
-    supportedFlightModes << APMCopterMode(APMCopterMode::GUIDED    ,true);
-    supportedFlightModes << APMCopterMode(APMCopterMode::LOITER    ,true);
-    supportedFlightModes << APMCopterMode(APMCopterMode::RTL       ,true);
-    supportedFlightModes << APMCopterMode(APMCopterMode::CIRCLE    ,true);
-    supportedFlightModes << APMCopterMode(APMCopterMode::POSITION  ,true);
-    supportedFlightModes << APMCopterMode(APMCopterMode::LAND      ,true);
-    supportedFlightModes << APMCopterMode(APMCopterMode::OF_LOITER ,true);
-    supportedFlightModes << APMCopterMode(APMCopterMode::DRIFT     ,true);
-    supportedFlightModes << APMCopterMode(APMCopterMode::SPORT     ,true);
-    supportedFlightModes << APMCopterMode(APMCopterMode::FLIP      ,true);
-    supportedFlightModes << APMCopterMode(APMCopterMode::AUTOTUNE  ,true);
-    supportedFlightModes << APMCopterMode(APMCopterMode::POS_HOLD  ,true);
-    supportedFlightModes << APMCopterMode(APMCopterMode::BRAKE     ,true);
-    setSupportedModes(supportedFlightModes);
+    setSupportedModes({
+        APMCopterMode(APMCopterMode::STABILIZE,     true),
+        APMCopterMode(APMCopterMode::ACRO,          true),
+        APMCopterMode(APMCopterMode::ALT_HOLD,      true),
+        APMCopterMode(APMCopterMode::AUTO,          true),
+        APMCopterMode(APMCopterMode::GUIDED,        true),
+        APMCopterMode(APMCopterMode::LOITER,        true),
+        APMCopterMode(APMCopterMode::RTL,           true),
+        APMCopterMode(APMCopterMode::CIRCLE,        true),
+        APMCopterMode(APMCopterMode::LAND,          true),
+        APMCopterMode(APMCopterMode::DRIFT,         true),
+        APMCopterMode(APMCopterMode::SPORT,         true),
+        APMCopterMode(APMCopterMode::FLIP,          true),
+        APMCopterMode(APMCopterMode::AUTOTUNE,      true),
+        APMCopterMode(APMCopterMode::POS_HOLD,      true),
+        APMCopterMode(APMCopterMode::BRAKE,         true),
+        APMCopterMode(APMCopterMode::THROW,         true),
+        APMCopterMode(APMCopterMode::AVOID_ADSB,    true),
+        APMCopterMode(APMCopterMode::GUIDED_NOGPS,  true),
+        APMCopterMode(APMCopterMode::SMART_RTL,     true),
+        APMCopterMode(APMCopterMode::FLOWHOLD,      true),
+        APMCopterMode(APMCopterMode::FOLLOW,        true),
+        APMCopterMode(APMCopterMode::ZIGZAG,        true),
+    });
 
     if (!_remapParamNameIntialized) {
-        FirmwarePlugin::remapParamNameMap_t& remap = _remapParamName[3][4];
+        FirmwarePlugin::remapParamNameMap_t& remapV3_6 = _remapParamName[3][6];
 
-        remap["ATC_ANG_RLL_P"] =    QStringLiteral("STB_RLL_P");
-        remap["ATC_ANG_PIT_P"] =    QStringLiteral("STB_PIT_P");
-        remap["ATC_ANG_YAW_P"] =    QStringLiteral("STB_YAW_P");
+        remapV3_6["BATT_AMP_PERVLT"] =  QStringLiteral("BATT_AMP_PERVOL");
+        remapV3_6["BATT2_AMP_PERVLT"] = QStringLiteral("BATT2_AMP_PERVOL");
+        remapV3_6["BATT_LOW_MAH"] =     QStringLiteral("FS_BATT_MAH");
+        remapV3_6["BATT_LOW_VOLT"] =    QStringLiteral("FS_BATT_VOLTAGE");
+        remapV3_6["BATT_FS_LOW_ACT"] =  QStringLiteral("FS_BATT_ENABLE");
+        remapV3_6["PSC_ACCZ_P"] =       QStringLiteral("ACCEL_Z_P");
+        remapV3_6["PSC_ACCZ_I"] =       QStringLiteral("ACCEL_Z_I");
 
-        remap["ATC_RAT_RLL_P"] =    QStringLiteral("RATE_RLL_P");
-        remap["ATC_RAT_RLL_I"] =    QStringLiteral("RATE_RLL_I");
-        remap["ATC_RAT_RLL_IMAX"] = QStringLiteral("RATE_RLL_IMAX");
-        remap["ATC_RAT_RLL_D"] =    QStringLiteral("RATE_RLL_D");
-        remap["ATC_RAT_RLL_FILT"] = QStringLiteral("RATE_RLL_FILT_HZ");
+        FirmwarePlugin::remapParamNameMap_t& remapV3_7 = _remapParamName[3][7];
 
-        remap["ATC_RAT_PIT_P"] =    QStringLiteral("RATE_PIT_P");
-        remap["ATC_RAT_PIT_I"] =    QStringLiteral("RATE_PIT_I");
-        remap["ATC_RAT_PIT_IMAX"] = QStringLiteral("RATE_PIT_IMAX");
-        remap["ATC_RAT_PIT_D"] =    QStringLiteral("RATE_PIT_D");
-        remap["ATC_RAT_PIT_FILT"] = QStringLiteral("RATE_PIT_FILT_HZ");
+        remapV3_7["BATT_ARM_VOLT"] =    QStringLiteral("ARMING_VOLT_MIN");
+        remapV3_7["BATT2_ARM_VOLT"] =   QStringLiteral("ARMING_VOLT2_MIN");
+        remapV3_7["RC7_OPTION"] =       QStringLiteral("CH7_OPT");
+        remapV3_7["RC8_OPTION"] =       QStringLiteral("CH8_OPT");
+        remapV3_7["RC9_OPTION"] =       QStringLiteral("CH9_OPT");
+        remapV3_7["RC10_OPTION"] =      QStringLiteral("CH10_OPT");
+        remapV3_7["RC11_OPTION"] =      QStringLiteral("CH11_OPT");
+        remapV3_7["RC12_OPTION"] =      QStringLiteral("CH12_OPT");
 
-        remap["ATC_RAT_YAW_P"] =    QStringLiteral("RATE_YAW_P");
-        remap["ATC_RAT_YAW_I"] =    QStringLiteral("RATE_YAW_I");
-        remap["ATC_RAT_YAW_IMAX"] = QStringLiteral("RATE_YAW_IMAX");
-        remap["ATC_RAT_YAW_D"] =    QStringLiteral("RATE_YAW_D");
-        remap["ATC_RAT_YAW_FILT"] = QStringLiteral("RATE_YAW_FILT_HZ");
+        FirmwarePlugin::remapParamNameMap_t& remapV4_0 = _remapParamName[4][0];
+
+        remapV4_0["TUNE_MIN"] = QStringLiteral("TUNE_HIGH");
+        remapV3_7["TUNE_MAX"] = QStringLiteral("TUNE_LOW");
+
+        _remapParamNameIntialized = true;
     }
 }
 
 int ArduCopterFirmwarePlugin::remapParamNameHigestMinorVersionNumber(int majorVersionNumber) const
 {
-    // Remapping supports up to 3.4
-    return majorVersionNumber == 3 ? 4: Vehicle::versionNotSetValue;
-}
-
-bool ArduCopterFirmwarePlugin::isCapable(const Vehicle* vehicle, FirmwareCapabilities capabilities)
-{
-    Q_UNUSED(vehicle);
-
-    uint32_t vehicleCapabilities = SetFlightModeCapability | GuidedModeCapability | PauseVehicleCapability;
-
-    return (capabilities & vehicleCapabilities) == capabilities;
-}
-
-void ArduCopterFirmwarePlugin::guidedModeRTL(Vehicle* vehicle)
-{
-    vehicle->setFlightMode("RTL");
+    // Remapping supports up to 3.7
+    return majorVersionNumber == 3 ? 7 : Vehicle::versionNotSetValue;
 }
 
 void ArduCopterFirmwarePlugin::guidedModeLand(Vehicle* vehicle)
 {
-    vehicle->setFlightMode("Land");
-}
-
-void ArduCopterFirmwarePlugin::guidedModeTakeoff(Vehicle* vehicle, double altitudeRel)
-{
-    if (qIsNaN(vehicle->altitudeAMSL()->rawValue().toDouble())) {
-        qgcApp()->showMessage(QStringLiteral("Unable to takeoff, vehicle position not known."));
-        return;
-    }
-
-    mavlink_message_t msg;
-    mavlink_command_long_t cmd;
-
-    cmd.command = (uint16_t)MAV_CMD_NAV_TAKEOFF;
-    cmd.confirmation = 0;
-    cmd.param1 = 0.0f;
-    cmd.param2 = 0.0f;
-    cmd.param3 = 0.0f;
-    cmd.param4 = 0.0f;
-    cmd.param5 = 0.0f;
-    cmd.param6 = 0.0f;
-    cmd.param7 = vehicle->altitudeAMSL()->rawValue().toFloat() +  altitudeRel; // AMSL meters
-    cmd.target_system = vehicle->id();
-    cmd.target_component = vehicle->defaultComponentId();
-
-    MAVLinkProtocol* mavlink = qgcApp()->toolbox()->mavlinkProtocol();
-    mavlink_msg_command_long_encode(mavlink->getSystemId(), mavlink->getComponentId(), &msg, &cmd);
-
-    vehicle->sendMessageOnPriorityLink(msg);
-}
-
-void ArduCopterFirmwarePlugin::guidedModeGotoLocation(Vehicle* vehicle, const QGeoCoordinate& gotoCoord)
-{
-    if (qIsNaN(vehicle->altitudeRelative()->rawValue().toDouble())) {
-        qgcApp()->showMessage(QStringLiteral("Unable to go to location, vehicle position not known."));
-        return;
-    }
-
-    QGeoCoordinate coordWithAltitude = gotoCoord;
-    coordWithAltitude.setAltitude(vehicle->altitudeRelative()->rawValue().toDouble());
-    vehicle->missionManager()->writeArduPilotGuidedMissionItem(coordWithAltitude, false /* altChangeOnly */);
-}
-
-void ArduCopterFirmwarePlugin::guidedModeChangeAltitude(Vehicle* vehicle, double altitudeRel)
-{
-    if (qIsNaN(vehicle->altitudeRelative()->rawValue().toDouble())) {
-        qgcApp()->showMessage(QStringLiteral("Unable to change altitude, vehicle altitude not known."));
-        return;
-    }
-
-    mavlink_message_t msg;
-    mavlink_set_position_target_local_ned_t cmd;
-
-    memset(&cmd, 0, sizeof(mavlink_set_position_target_local_ned_t));
-
-    cmd.target_system = vehicle->id();
-    cmd.target_component = vehicle->defaultComponentId();
-    cmd.coordinate_frame = MAV_FRAME_LOCAL_OFFSET_NED;
-    cmd.type_mask = 0xFFF8; // Only x/y/z valid
-    cmd.x = 0.0f;
-    cmd.y = 0.0f;
-    cmd.z = -(altitudeRel - vehicle->altitudeRelative()->rawValue().toDouble());
-
-    MAVLinkProtocol* mavlink = qgcApp()->toolbox()->mavlinkProtocol();
-    mavlink_msg_set_position_target_local_ned_encode(mavlink->getSystemId(), mavlink->getComponentId(), &msg, &cmd);
-
-    vehicle->sendMessageOnPriorityLink(msg);
-}
-
-bool ArduCopterFirmwarePlugin::isPaused(const Vehicle* vehicle) const
-{
-    return vehicle->flightMode() == "Brake";
-}
-
-void ArduCopterFirmwarePlugin::pauseVehicle(Vehicle* vehicle)
-{
-    vehicle->setFlightMode("Brake");
-}
-
-void ArduCopterFirmwarePlugin::setGuidedMode(Vehicle* vehicle, bool guidedMode)
-{
-    if (guidedMode) {
-        vehicle->setFlightMode("Guided");
-    } else {
-        pauseVehicle(vehicle);
-    }
+    _setFlightModeAndValidate(vehicle, "Land");
 }
 
 bool ArduCopterFirmwarePlugin::multiRotorCoaxialMotors(Vehicle* vehicle)
@@ -210,11 +125,23 @@ bool ArduCopterFirmwarePlugin::multiRotorCoaxialMotors(Vehicle* vehicle)
 
 bool ArduCopterFirmwarePlugin::multiRotorXConfig(Vehicle* vehicle)
 {
-    return vehicle->autopilotPlugin()->getParameterFact(FactSystem::defaultComponentId, "FRAME")->rawValue().toInt() != 0;
+    return vehicle->parameterManager()->getParameter(FactSystem::defaultComponentId, "FRAME")->rawValue().toInt() != 0;
 }
 
-QString ArduCopterFirmwarePlugin::geoFenceRadiusParam(Vehicle* vehicle)
+bool ArduCopterFirmwarePlugin::vehicleYawsToNextWaypointInMission(const Vehicle* vehicle) const
 {
-    Q_UNUSED(vehicle);
-    return QStringLiteral("FENCE_RADIUS");
+    if (vehicle->isOfflineEditingVehicle()) {
+        return FirmwarePlugin::vehicleYawsToNextWaypointInMission(vehicle);
+    } else {
+        if (vehicle->multiRotor() && vehicle->parameterManager()->parameterExists(FactSystem::defaultComponentId, QStringLiteral("WP_YAW_BEHAVIOR"))) {
+            Fact* yawMode = vehicle->parameterManager()->getParameter(FactSystem::defaultComponentId, QStringLiteral("WP_YAW_BEHAVIOR"));
+            return yawMode && yawMode->rawValue().toInt() != 0;
+        }
+    }
+    return true;
+}
+
+void ArduCopterFirmwarePlugin::sendGCSMotionReport(Vehicle* vehicle, FollowMe::GCSMotionReport& motionReport, uint8_t estimatationCapabilities)
+{
+    _sendGCSMotionReport(vehicle, motionReport, estimatationCapabilities);
 }

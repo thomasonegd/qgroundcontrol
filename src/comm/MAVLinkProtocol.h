@@ -1,21 +1,13 @@
 /****************************************************************************
  *
- *   (c) 2009-2016 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
+ *   (c) 2009-2018 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
  *
  * QGroundControl is licensed according to the terms in the file
  * COPYING.md in the root of the source code directory.
  *
  ****************************************************************************/
 
-
-/**
- * @file
- *   @brief Definition of class MAVLinkProtocol
- *   @author Lorenz Meier <mail@qgroundcontrol.org>
- */
-
-#ifndef MAVLINKPROTOCOL_H_
-#define MAVLINKPROTOCOL_H_
+#pragma once
 
 #include <QObject>
 #include <QMutex>
@@ -50,7 +42,7 @@ class MAVLinkProtocol : public QGCTool
     Q_OBJECT
 
 public:
-    MAVLinkProtocol(QGCApplication* app);
+    MAVLinkProtocol(QGCApplication* app, QGCToolbox* toolbox);
     ~MAVLinkProtocol();
 
     /** @brief Get the human-friendly name of this protocol */
@@ -64,62 +56,24 @@ public:
     bool versionCheckEnabled() const {
         return m_enable_version_check;
     }
-    /** @brief Get the multiplexing state */
-    bool multiplexingEnabled() const {
-        return m_multiplexingEnabled;
-    }
     /** @brief Get the protocol version */
     int getVersion() {
         return MAVLINK_VERSION;
     }
-    /** @brief Get state of parameter retransmission */
-    bool paramGuardEnabled() {
-        return m_paramGuardEnabled;
-    }
-    /** @brief Get parameter read timeout */
-    int getParamRetransmissionTimeout() {
-        return m_paramRetransmissionTimeout;
-    }
-    /** @brief Get parameter write timeout */
-    int getParamRewriteTimeout() {
-        return m_paramRewriteTimeout;
-    }
-    /** @brief Get state of action retransmission */
-    bool actionGuardEnabled() {
-        return m_actionGuardEnabled;
-    }
-    /** @brief Get parameter read timeout */
-    int getActionRetransmissionTimeout() {
-        return m_actionRetransmissionTimeout;
-    }
-    /**
-     * Retrieve a total of all successfully parsed packets for the specified link.
-     * @returns -1 if this is not available for this protocol, # of packets otherwise.
-     */
-    qint32 getReceivedPacketCount(const LinkInterface *link) const {
-        return totalReceiveCounter[link->getMavlinkChannel()];
-    }
-    /**
-     * Retrieve a total of all parsing errors for the specified link.
-     * @returns -1 if this is not available for this protocol, # of errors otherwise.
-     */
-    qint32 getParsingErrorCount(const LinkInterface *link) const {
-        return totalErrorCounter[link->getMavlinkChannel()];
-    }
-    /**
-     * Retrieve a total of all dropped packets for the specified link.
-     * @returns -1 if this is not available for this protocol, # of packets otherwise.
-     */
-    qint32 getDroppedPacketCount(const LinkInterface *link) const {
-        return totalLossCounter[link->getMavlinkChannel()];
+    /** @brief Get the currently configured protocol version */
+    unsigned getCurrentVersion() {
+        return _current_version;
     }
     /**
      * Reset the counters for all metadata for this link.
      */
-    virtual void resetMetadataForLink(const LinkInterface *link);
+    virtual void resetMetadataForLink(LinkInterface *link);
     
     /// Suspend/Restart logging during replay.
     void suspendLogForReplay(bool suspend);
+
+    /// Set protocol version
+    void setVersion(unsigned version);
 
     // Override from QGCTool
     virtual void setToolbox(QGCToolbox *toolbox);
@@ -127,27 +81,12 @@ public:
 public slots:
     /** @brief Receive bytes from a communication interface */
     void receiveBytes(LinkInterface* link, QByteArray b);
+
+    /** @brief Log bytes sent from a communication interface */
+    void logSentBytes(LinkInterface* link, QByteArray b);
     
     /** @brief Set the system id of this application */
     void setSystemId(int id);
-
-    /** @brief Enabled/disable packet multiplexing */
-    void enableMultiplexing(bool enabled);
-
-    /** @brief Enable / disable parameter retransmission */
-    void enableParamGuard(bool enabled);
-
-    /** @brief Enable / disable action retransmission */
-    void enableActionGuard(bool enabled);
-
-    /** @brief Set parameter read timeout */
-    void setParamRetransmissionTimeout(int ms);
-
-    /** @brief Set parameter write timeout */
-    void setParamRewriteTimeout(int ms);
-
-    /** @brief Set parameter read timeout */
-    void setActionRetransmissionTimeout(int ms);
 
     /** @brief Enable / disable version check */
     void enableVersionCheck(bool enabled);
@@ -157,59 +96,42 @@ public slots:
     /** @brief Store protocol settings */
     void storeSettings();
     
-#ifndef __mobile__
     /// @brief Deletes any log files which are in the temp directory
     static void deleteTempLogFiles(void);
     
     /// Checks for lost log files
     void checkForLostLogFiles(void);
-#endif
 
 protected:
-    bool m_multiplexingEnabled; ///< Enable/disable packet multiplexing
-    bool m_enable_version_check; ///< Enable checking of version match of MAV and QGC
-    int m_paramRetransmissionTimeout; ///< Timeout for parameter retransmission
-    int m_paramRewriteTimeout;    ///< Timeout for sending re-write request
-    bool m_paramGuardEnabled;       ///< Parameter retransmission/rewrite enabled
-    bool m_actionGuardEnabled;       ///< Action request retransmission enabled
-    int m_actionRetransmissionTimeout; ///< Timeout for parameter retransmission
-    QMutex receiveMutex;        ///< Mutex to protect receiveBytes function
-    int lastIndex[256][256];    ///< Store the last received sequence ID for each system/componenet pair
-    int totalReceiveCounter[MAVLINK_COMM_NUM_BUFFERS];    ///< The total number of successfully received messages
-    int totalLossCounter[MAVLINK_COMM_NUM_BUFFERS];       ///< Total messages lost during transmission.
-    int totalErrorCounter[MAVLINK_COMM_NUM_BUFFERS];      ///< Total count of all parsing errors. Generally <= totalLossCounter.
-    int currReceiveCounter[MAVLINK_COMM_NUM_BUFFERS];     ///< Received messages during this sample time window. Used for calculating loss %.
-    int currLossCounter[MAVLINK_COMM_NUM_BUFFERS];        ///< Lost messages during this sample time window. Used for calculating loss %.
-    bool versionMismatchIgnore;
-    int systemId;
+    bool        m_enable_version_check;                         ///< Enable checking of version match of MAV and QGC
+    uint8_t     lastIndex[256][256];                            ///< Store the last received sequence ID for each system/componenet pair
+    uint8_t     firstMessage[256][256];                         ///< First message flag
+    uint64_t    totalReceiveCounter[MAVLINK_COMM_NUM_BUFFERS];  ///< The total number of successfully received messages
+    uint64_t    totalLossCounter[MAVLINK_COMM_NUM_BUFFERS];     ///< Total messages lost during transmission.
+    float       runningLossPercent[MAVLINK_COMM_NUM_BUFFERS];   ///< Loss rate
+
+    mavlink_message_t _message;
+    mavlink_status_t _status;
+
+    bool        versionMismatchIgnore;
+    int         systemId;
+    unsigned    _current_version;
+    int         _radio_version_mismatch_count;
 
 signals:
     /// Heartbeat received on link
-    void vehicleHeartbeatInfo(LinkInterface* link, int vehicleId, int vehicleMavlinkVersion, int vehicleFirmwareType, int vehicleType);
+    void vehicleHeartbeatInfo(LinkInterface* link, int vehicleId, int componentId, int vehicleFirmwareType, int vehicleType);
 
     /** @brief Message received and directly copied via signal */
     void messageReceived(LinkInterface* link, mavlink_message_t message);
-    /** @brief Emitted if multiplexing is started / stopped */
-    void multiplexingChanged(bool enabled);
     /** @brief Emitted if version check is enabled / disabled */
     void versionCheckChanged(bool enabled);
     /** @brief Emitted if a message from the protocol should reach the user */
     void protocolStatusMessage(const QString& title, const QString& message);
     /** @brief Emitted if a new system ID was set */
     void systemIdChanged(int systemId);
-    /** @brief Emitted if param guard status changed */
-    void paramGuardChanged(bool enabled);
-    /** @brief Emitted if param read timeout changed */
-    void paramRetransmissionTimeoutChanged(int ms);
-    /** @brief Emitted if param write timeout changed */
-    void paramRewriteTimeoutChanged(int ms);
-    /** @brief Emitted if action guard status changed */
-    void actionGuardChanged(bool enabled);
-    /** @brief Emitted if action request timeout changed */
-    void actionRetransmissionTimeoutChanged(int ms);
 
-    void receiveLossPercentChanged(int uasId, float lossPercent);
-    void receiveLossTotalChanged(int uasId, int totalLoss);
+    void mavlinkMessageStatus(int uasId, uint64_t totalSent, uint64_t totalReceived, uint64_t totalLoss, float lossPercent);
 
     /**
      * @brief Emitted if a new radio status packet received
@@ -225,33 +147,29 @@ signals:
     void radioStatusChanged(LinkInterface* link, unsigned rxerrors, unsigned fixed, int rssi, int remrssi,
     unsigned txbuf, unsigned noise, unsigned remnoise);
     
-    /// @brief Emitted when a temporary log file is ready for saving
-    void saveTempFlightDataLog(QString tempLogfile);
+    /// Emitted when a temporary telemetry log file is ready for saving
+    void saveTelemetryLog(QString tempLogfile);
+
+    /// Emitted when a telemetry log is started to save.
+    void checkTelemetrySavePath(void);
 
 private slots:
-    void _vehicleCountChanged(int count);
+    void _vehicleCountChanged(void);
     
 private:
-    void _sendMessage(mavlink_message_t message);
-    void _sendMessage(LinkInterface* link, mavlink_message_t message);
-    void _sendMessage(LinkInterface* link, mavlink_message_t message, quint8 systemid, quint8 componentid);
-
-#ifndef __mobile__
     bool _closeLogFile(void);
     void _startLogging(void);
     void _stopLogging(void);
 
     bool _logSuspendError;      ///< true: Logging suspended due to error
     bool _logSuspendReplay;     ///< true: Logging suspended due to replay
-    bool _logPromptForSave;     ///< true: Prompt for log save when appropriate
+    bool _vehicleWasArmed;      ///< true: Vehicle was armed during log sequence
 
     QGCTemporaryFile    _tempLogFile;            ///< File to log to
     static const char*  _tempLogFileTemplate;    ///< Template for temporary log file
     static const char*  _logFileExtension;       ///< Extension for log files
-#endif
 
     LinkManager*            _linkMgr;
     MultiVehicleManager*    _multiVehicleManager;
 };
 
-#endif // MAVLINKPROTOCOL_H_

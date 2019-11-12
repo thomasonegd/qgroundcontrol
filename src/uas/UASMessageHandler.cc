@@ -17,7 +17,7 @@
 #include "QGCApplication.h"
 #include "UASMessageHandler.h"
 #include "MultiVehicleManager.h"
-#include "UAS.h"
+#include "Vehicle.h"
 
 UASMessage::UASMessage(int componentid, int severity, QString text)
 {
@@ -39,9 +39,9 @@ bool UASMessage::severityIsError()
     }
 }
 
-UASMessageHandler::UASMessageHandler(QGCApplication* app)
-    : QGCTool(app)
-    , _activeUAS(NULL)
+UASMessageHandler::UASMessageHandler(QGCApplication* app, QGCToolbox* toolbox)
+    : QGCTool(app, toolbox)
+    , _activeVehicle(nullptr)
     , _activeComponent(-1)
     , _multiComp(false)
     , _errorCount(0)
@@ -49,7 +49,7 @@ UASMessageHandler::UASMessageHandler(QGCApplication* app)
     , _warningCount(0)
     , _normalCount(0)
     , _showErrorsInToolbar(false)
-    , _multiVehicleManager(NULL)
+    , _multiVehicleManager(nullptr)
 {
 
 }
@@ -66,7 +66,7 @@ void UASMessageHandler::setToolbox(QGCToolbox *toolbox)
    _multiVehicleManager = _toolbox->multiVehicleManager();
 
    connect(_multiVehicleManager, &MultiVehicleManager::activeVehicleChanged, this, &UASMessageHandler::_activeVehicleChanged);
-   emit textMessageReceived(NULL);
+   emit textMessageReceived(nullptr);
    emit textMessageCountChanged(0);
 }
 
@@ -87,27 +87,28 @@ void UASMessageHandler::clearMessages()
 void UASMessageHandler::_activeVehicleChanged(Vehicle* vehicle)
 {
     // If we were already attached to an autopilot, disconnect it.
-    if (_activeUAS)
-    {
-        disconnect(_activeUAS, &UASInterface::textMessageReceived, this, &UASMessageHandler::handleTextMessage);
-        _activeUAS = NULL;
+    if (_activeVehicle) {
+        disconnect(_activeVehicle, &Vehicle::textMessageReceived, this, &UASMessageHandler::handleTextMessage);
+        _activeVehicle = nullptr;
         clearMessages();
-        emit textMessageReceived(NULL);
+        emit textMessageReceived(nullptr);
     }
-    // And now if there's an autopilot to follow, set up the UI.
-    if (vehicle)
-    {
-        UAS* uas = vehicle->uas();
 
+    // And now if there's an autopilot to follow, set up the UI.
+    if (vehicle) {
         // Connect to the new UAS.
         clearMessages();
-        _activeUAS = uas;
-        connect(uas, &UASInterface::textMessageReceived, this, &UASMessageHandler::handleTextMessage);
+        _activeVehicle = vehicle;
+        connect(_activeVehicle, &Vehicle::textMessageReceived, this, &UASMessageHandler::handleTextMessage);
     }
 }
 
 void UASMessageHandler::handleTextMessage(int, int compId, int severity, QString text)
 {
+    // Hack to prevent calibration messages from cluttering things up
+    if (_activeVehicle->px4Firmware() && text.startsWith(QStringLiteral("[cal] "))) {
+        return;
+    }
 
     // Color the output depending on the message severity. We have 3 distinct cases:
     // 1: If we have an ERROR or worse, make it bigger, bolder, and highlight it red.
@@ -148,42 +149,41 @@ void UASMessageHandler::handleTextMessage(int, int compId, int severity, QString
     }
 
     // And determine the text for the severitie
-    QString severityText("");
+    QString severityText;
     switch (severity)
     {
     case MAV_SEVERITY_EMERGENCY:
-        severityText = QString(tr(" EMERGENCY:"));
+        severityText = tr(" EMERGENCY:");
         break;
     case MAV_SEVERITY_ALERT:
-        severityText = QString(tr(" ALERT:"));
+        severityText = tr(" ALERT:");
         break;
     case MAV_SEVERITY_CRITICAL:
-        severityText = QString(tr(" Critical:"));
+        severityText = tr(" Critical:");
         break;
     case MAV_SEVERITY_ERROR:
-        severityText = QString(tr(" Error:"));
+        severityText = tr(" Error:");
         break;
     case MAV_SEVERITY_WARNING:
-        severityText = QString(tr(" Warning:"));
+        severityText = tr(" Warning:");
         break;
     case MAV_SEVERITY_NOTICE:
-        severityText = QString(tr(" Notice:"));
+        severityText = tr(" Notice:");
         break;
     case MAV_SEVERITY_INFO:
-        severityText = QString(tr(" Info:"));
+        severityText = tr(" Info:");
         break;
     case MAV_SEVERITY_DEBUG:
-        severityText = QString(tr(" Debug:"));
+        severityText = tr(" Debug:");
         break;
     default:
-        severityText = QString(tr(""));
         break;
     }
 
     // Finally preppend the properly-styled text with a timestamp.
     QString dateString = QDateTime::currentDateTime().toString("hh:mm:ss.zzz");
     UASMessage* message = new UASMessage(compId, severity, text);
-    QString compString("");
+    QString compString;
     if (_multiComp) {
         compString = QString(" COMP:%1").arg(compId);
     }

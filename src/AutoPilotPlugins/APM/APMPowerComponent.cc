@@ -11,10 +11,11 @@
 #include "APMPowerComponent.h"
 #include "APMAutoPilotPlugin.h"
 #include "APMAirframeComponent.h"
+#include "ParameterManager.h"
 
 APMPowerComponent::APMPowerComponent(Vehicle* vehicle, AutoPilotPlugin* autopilot, QObject* parent)
     : VehicleComponent(vehicle, autopilot, parent),
-    _name("Power")
+    _name(tr("Power"))
 {
 }
 
@@ -33,25 +34,6 @@ QString APMPowerComponent::iconResource(void) const
     return QStringLiteral("/qmlimages/PowerComponentIcon.png");
 }
 
-bool APMPowerComponent::requiresSetup(void) const
-{
-    return true;
-}
-
-bool APMPowerComponent::setupComplete(void) const
-{
-    return _autopilot->getParameterFact(FactSystem::defaultComponentId, QStringLiteral("BATT_CAPACITY"))->rawValue().toInt() != 0;
-}
-
-QStringList APMPowerComponent::setupCompleteChangedTriggerList(void) const
-{
-    QStringList list;
-
-    list << QStringLiteral("BATT_CAPACITY");
-
-    return list;
-}
-
 QUrl APMPowerComponent::setupSource(void) const
 {
     return QUrl::fromUserInput(QStringLiteral("qrc:/qml/APMPowerComponent.qml"));
@@ -60,14 +42,4 @@ QUrl APMPowerComponent::setupSource(void) const
 QUrl APMPowerComponent::summaryQmlSource(void) const
 {
     return QUrl::fromUserInput(QStringLiteral("qrc:/qml/APMPowerComponentSummary.qml"));
-}
-
-QString APMPowerComponent::prerequisiteSetup(void) const
-{
-    APMAutoPilotPlugin* plugin = dynamic_cast<APMAutoPilotPlugin*>(_autopilot);
-    Q_ASSERT(plugin);
-    if (!plugin->airframeComponent()->setupComplete()) {
-        return plugin->airframeComponent()->name();
-    }
-    return QString();
 }

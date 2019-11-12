@@ -20,13 +20,12 @@
 
 #include "QGCMAVLink.h"
 #include "QGC.h"
-#include "MavlinkQmlSingleton.h"
 #include "QmlObjectListModel.h"
 #include "Fact.h"
 #include "QGCLoggingCategory.h"
 #include "QmlObjectListModel.h"
 
-class SurveyMissionItem;
+class SurveyComplexItem;
 class SimpleMissionItem;
 class MissionController;
 #ifdef UNITTEST_BUILD
@@ -39,7 +38,7 @@ class MissionItem : public QObject
     Q_OBJECT
     
 public:
-    MissionItem(QObject* parent = NULL);
+    MissionItem(QObject* parent = nullptr);
 
     MissionItem(int             sequenceNumber,
                 MAV_CMD         command,
@@ -53,9 +52,9 @@ public:
                 double          param7,
                 bool            autoContinue,
                 bool            isCurrentItem,
-                QObject*        parent = NULL);
+                QObject*        parent = nullptr);
 
-    MissionItem(const MissionItem& other, QObject* parent = NULL);
+    MissionItem(const MissionItem& other, QObject* parent = nullptr);
 
     ~MissionItem();
 
@@ -74,6 +73,16 @@ public:
     double          param6          (void) const { return _param6Fact.rawValue().toDouble(); }
     double          param7          (void) const { return _param7Fact.rawValue().toDouble(); }
     QGeoCoordinate  coordinate      (void) const;
+    int             doJumpId        (void) const { return _doJumpId; }
+
+    /// @return Flight speed change value if this item supports it. If not it returns NaN.
+    double specifiedFlightSpeed(void) const;
+
+    /// @return Flight gimbal yaw change value if this item supports it. If not it returns NaN.
+    double specifiedGimbalYaw(void) const;
+
+    /// @return Flight gimbal pitch change value if this item supports it. If not it returns NaN.
+    double specifiedGimbalPitch(void) const;
 
     void setCommand         (MAV_CMD command);
     void setSequenceNumber  (int sequenceNumber);
@@ -87,21 +96,32 @@ public:
     void setParam5          (double param5);
     void setParam6          (double param6);
     void setParam7          (double param7);
-    void setCoordinate      (const QGeoCoordinate& coordinate);
     
     void save(QJsonObject& json) const;
     bool load(QTextStream &loadStream);
-    bool load(const QJsonObject& json, QString& errorString);
+    bool load(const QJsonObject& json, int sequenceNumber, QString& errorString);
 
     bool relativeAltitude(void) const { return frame() == MAV_FRAME_GLOBAL_RELATIVE_ALT; }
 
 signals:
     void isCurrentItemChanged       (bool isCurrentItem);
     void sequenceNumberChanged      (int sequenceNumber);
-    
+    void specifiedFlightSpeedChanged(double flightSpeed);
+    void specifiedGimbalYawChanged  (double gimbalYaw);
+    void specifiedGimbalPitchChanged(double gimbalPitch);
+
+private slots:
+    void _param1Changed(QVariant value);
+    void _param2Changed(QVariant value);
+    void _param3Changed(QVariant value);
+
 private:
-    int         _sequenceNumber;
-    bool        _isCurrentItem;
+    bool _convertJsonV1ToV2(const QJsonObject& json, QJsonObject& v2Json, QString& errorString);
+    bool _convertJsonV2ToV3(QJsonObject& json, QString& errorString);
+
+    int     _sequenceNumber;
+    int     _doJumpId;
+    bool    _isCurrentItem;
 
     Fact    _autoContinueFact;
     Fact    _commandFact;
@@ -115,19 +135,22 @@ private:
     Fact    _param7Fact;
     
     // Keys for Json save
-    static const char*  _itemType;
-    static const char*  _jsonTypeKey;
-    static const char*  _jsonIdKey;
     static const char*  _jsonFrameKey;
     static const char*  _jsonCommandKey;
+    static const char*  _jsonAutoContinueKey;
+    static const char*  _jsonParamsKey;
+    static const char*  _jsonDoJumpIdKey;
+
+    // Deprecated V2 format keys
+    static const char*  _jsonCoordinateKey;
+
+    // Deprecated V1 format keys
     static const char*  _jsonParam1Key;
     static const char*  _jsonParam2Key;
     static const char*  _jsonParam3Key;
     static const char*  _jsonParam4Key;
-    static const char*  _jsonAutoContinueKey;
-    static const char*  _jsonCoordinateKey;
 
-    friend class SurveyMissionItem;
+    friend class SurveyComplexItem;
     friend class SimpleMissionItem;
     friend class MissionController;
 #ifdef UNITTEST_BUILD

@@ -24,26 +24,27 @@ class MissionCommandTreeTest;
 
 /// UI Information associated with a mission command (MAV_CMD) parameter
 ///
-/// MissionCommandParamInfo is used to automatically generate editing ui for a parameter assocaited with a MAV_CMD.
+/// MissionCommandParamInfo is used to automatically generate editing ui for a parameter associated with a MAV_CMD.
 ///
 /// The json format for a MissionCmdParamInfo object is:
 ///
 /// Key             Type    Default     Description
 /// label           string  required    Label for text field
 /// units           string              Units for value, should use FactMetaData units strings in order to get automatic translation
-/// default         double  0.0         Default value for param
+/// default         double  0.0/NaN     Default value for param. If no default value specified and nanUnchanged == true, then defaultValue is NaN.
 /// decimalPlaces   int     7           Number of decimal places to show for value
 /// enumStrings     string              Strings to show in combo box for selection
-/// enumValues      string              Values assocaited with each enum string
+/// enumValues      string              Values associated with each enum string
+/// nanUnchanged    bool    false       True: value can be set to NaN to signal unchanged
 ///
 class MissionCmdParamInfo : public QObject {
 
     Q_OBJECT
 
 public:
-    MissionCmdParamInfo(QObject* parent = NULL);
+    MissionCmdParamInfo(QObject* parent = nullptr);
 
-    MissionCmdParamInfo(const MissionCmdParamInfo& other, QObject* parent = NULL);
+    MissionCmdParamInfo(const MissionCmdParamInfo& other, QObject* parent = nullptr);
     const MissionCmdParamInfo& operator=(const MissionCmdParamInfo& other);
 
     Q_PROPERTY(int          decimalPlaces   READ decimalPlaces  CONSTANT)
@@ -53,6 +54,7 @@ public:
     Q_PROPERTY(QString      label           READ label          CONSTANT)
     Q_PROPERTY(int          param           READ param          CONSTANT)
     Q_PROPERTY(QString      units           READ units          CONSTANT)
+    Q_PROPERTY(bool         nanUnchanged    READ nanUnchanged   CONSTANT)
 
     int             decimalPlaces   (void) const { return _decimalPlaces; }
     double          defaultValue    (void) const { return _defaultValue; }
@@ -61,6 +63,7 @@ public:
     QString         label           (void) const { return _label; }
     int             param           (void) const { return _param; }
     QString         units           (void) const { return _units; }
+    bool            nanUnchanged    (void) const { return _nanUnchanged; }
 
 private:
     int             _decimalPlaces;
@@ -70,6 +73,7 @@ private:
     QString         _label;
     int             _param;
     QString         _units;
+    bool            _nanUnchanged;
 
     friend class MissionCommandTree;
     friend class MissionCommandUIInfo;
@@ -90,6 +94,7 @@ private:
 /// friendlyName            string  rawName     Short description of command
 /// description             string              Long description of command
 /// specifiesCoordinate     bool    false       true: Command specifies a lat/lon/alt coordinate
+/// specifiesAltitudeOnly   bool    false       true: Command specifies an altitude only (no coordinate)
 /// standaloneCoordinate    bool    false       true: Vehicle does not fly through coordinate associated with command (exampl: ROI)
 /// friendlyEdit            bool    false       true: Command supports friendly editing dialog, false: Command supports 'Show all values" style editing only
 /// category                string  Advanced    Category which this command belongs to
@@ -100,9 +105,9 @@ class MissionCommandUIInfo : public QObject {
     Q_OBJECT
 
 public:
-    MissionCommandUIInfo(QObject* parent = NULL);
+    MissionCommandUIInfo(QObject* parent = nullptr);
 
-    MissionCommandUIInfo(const MissionCommandUIInfo& other, QObject* parent = NULL);
+    MissionCommandUIInfo(const MissionCommandUIInfo& other, QObject* parent = nullptr);
     const MissionCommandUIInfo& operator=(const MissionCommandUIInfo& other);
 
     Q_PROPERTY(QString  category                READ category               CONSTANT)
@@ -112,6 +117,7 @@ public:
     Q_PROPERTY(QString  rawName                 READ rawName                CONSTANT)
     Q_PROPERTY(bool     isStandaloneCoordinate  READ isStandaloneCoordinate CONSTANT)
     Q_PROPERTY(bool     specifiesCoordinate     READ specifiesCoordinate    CONSTANT)
+    Q_PROPERTY(bool     specifiesAltitudeOnly   READ specifiesAltitudeOnly  CONSTANT)
     Q_PROPERTY(int      command                 READ intCommand             CONSTANT)
 
     MAV_CMD command(void) const { return _command; }
@@ -124,6 +130,7 @@ public:
     QString rawName                 (void) const;
     bool    isStandaloneCoordinate  (void) const;
     bool    specifiesCoordinate     (void) const;
+    bool    specifiesAltitudeOnly   (void) const;
 
     /// Load the data in the object from the specified json
     ///     @param jsonObject Json object to load from
@@ -131,8 +138,11 @@ public:
     /// @return true: success, false: failure, errorString set
     bool loadJsonInfo(const QJsonObject& jsonObject, bool requireFullObject, QString& errorString);
 
-    /// Return param info for index, NULL for param should not be shown
-    const MissionCmdParamInfo* getParamInfo(int index) const;
+    /// Retruns parameter information for specified parameter
+    ///     @param index paremeter index to retrieve, 1-7
+    ///     @param showUI true: show parameter in editor, false: hide parameter in editor
+    /// @return Param info for index, NULL for none available
+    const MissionCmdParamInfo* getParamInfo(int index, bool& showUI) const;
 
 private:
     QString _loadErrorString(const QString& errorString) const;
@@ -161,6 +171,7 @@ private:
     static const char* _descriptionJsonKey;
     static const char* _enumStringsJsonKey;
     static const char* _enumValuesJsonKey;
+    static const char* _nanUnchangedJsonKey;
     static const char* _friendlyNameJsonKey;
     static const char* _friendlyEditJsonKey;
     static const char* _idJsonKey;
@@ -178,8 +189,9 @@ private:
     static const char* _rawNameJsonKey;
     static const char* _standaloneCoordinateJsonKey;
     static const char* _specifiesCoordinateJsonKey;
+    static const char* _specifiesAltitudeOnlyJsonKey;
     static const char* _unitsJsonKey;
-    static const char* _commentJsonKey;
+    static const char* _commentJsonKey;    
     static const char* _advancedCategory;
 
     friend class MissionCommandTree;    

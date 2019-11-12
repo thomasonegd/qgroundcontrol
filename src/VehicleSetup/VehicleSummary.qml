@@ -8,9 +8,9 @@
  ****************************************************************************/
 
 
-import QtQuick                  2.2
+import QtQuick                  2.3
 import QtQuick.Controls         1.2
-import QtQuick.Controls.Styles  1.2
+import QtQuick.Controls.Styles  1.4
 
 import QGroundControl                       1.0
 import QGroundControl.FactSystem            1.0
@@ -86,6 +86,7 @@ Rectangle {
                 text:           setupComplete ?
                     qsTr("Below you will find a summary of the settings for your vehicle. To the left are the setup menus for each component.") :
                     qsTr("WARNING: Your vehicle requires setup prior to flight. Please resolve the items marked in red using the menu on the left.")
+
                 property bool setupComplete: QGroundControl.multiVehicleManager.activeVehicle ? QGroundControl.multiVehicleManager.activeVehicle.autopilot.setupComplete : false
             }
 
@@ -127,10 +128,14 @@ Rectangle {
                                 height:                 width
                                 radius:                 width / 2
                                 color:                  modelData.setupComplete ? "#00d932" : "red"
-                                visible:                modelData.requiresSetup
+                                visible:                modelData.requiresSetup && modelData.setupSource !== ""
                             }
+
                             onClicked : {
-                                setupView.showVehicleComponentPanel(modelData)
+                                console.log(modelData.setupSource)
+                                if (modelData.setupSource !== "") {
+                                    setupView.showVehicleComponentPanel(modelData)
+                                }
                             }
                         }
                         // Summary Qml

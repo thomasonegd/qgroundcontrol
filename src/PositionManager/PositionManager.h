@@ -9,7 +9,8 @@
 
 #pragma once
 
-#include <QtPositioning/qgeopositioninfosource.h>
+#include <QGeoPositionInfoSource>
+#include <QNmeaPositionInfoSource>
 
 #include <QVariant>
 
@@ -21,29 +22,47 @@ class QGCPositionManager : public QGCTool {
 
 public:
 
-    QGCPositionManager(QGCApplication* app);
+    QGCPositionManager(QGCApplication* app, QGCToolbox* toolbox);
     ~QGCPositionManager();
+
+    Q_PROPERTY(QGeoCoordinate gcsPosition  READ gcsPosition  NOTIFY gcsPositionChanged)
+    Q_PROPERTY(qreal          gcsHeading   READ gcsHeading   NOTIFY gcsHeadingChanged)
 
     enum QGCPositionSource {
         Simulated,
-        GPS,
-        Log
+        InternalGPS,
+        Log,
+        NmeaGPS
     };
 
-    void setPositionSource(QGCPositionSource source);
+    QGeoCoordinate      gcsPosition         (void) { return _gcsPosition; }
+    qreal               gcsHeading          (void) { return _gcsHeading; }
+    QGeoPositionInfo    geoPositionInfo     (void) const { return _geoPositionInfo; }
+    void                setPositionSource   (QGCPositionSource source);
+    int                 updateInterval      (void) const;
+    void                setNmeaSourceDevice (QIODevice* device);
 
-    int updateInterval() const;
+    // Overrides from QGCTool
+    void setToolbox(QGCToolbox* toolbox) override;
+
 
 private slots:
-    void positionUpdated(const QGeoPositionInfo &update);
+    void _positionUpdated(const QGeoPositionInfo &update);
+    void _error(QGeoPositionInfoSource::Error positioningError);
 
 signals:
-    void lastPositionUpdated(bool valid, QVariant lastPosition);
+    void gcsPositionChanged(QGeoCoordinate gcsPosition);
+    void gcsHeadingChanged(qreal gcsHeading);
     void positionInfoUpdated(QGeoPositionInfo update);
 
 private:
-    int _updateInterval;
-    QGeoPositionInfoSource * _currentSource;
-    QGeoPositionInfoSource * _defaultSource;
-    QGeoPositionInfoSource * _simulatedSource;
+    int                 _updateInterval;
+    QGeoPositionInfo    _geoPositionInfo;
+    QGeoCoordinate      _gcsPosition;
+    qreal               _gcsHeading;
+
+    QGeoPositionInfoSource*     _currentSource;
+    QGeoPositionInfoSource*     _defaultSource;
+    QNmeaPositionInfoSource*    _nmeaSource;
+    QGeoPositionInfoSource*     _simulatedSource;
 };

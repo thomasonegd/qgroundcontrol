@@ -1,27 +1,18 @@
 /****************************************************************************
  *
- *   (c) 2009-2016 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
+ *   (c) 2009-2018 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
  *
  * QGroundControl is licensed according to the terms in the file
  * COPYING.md in the root of the source code directory.
  *
  ****************************************************************************/
 
-
-/*!
- * @file
- *   @brief Message Handler
- *   @author Gus Grubba <mavlink@grubba.com>
- */
-
-#ifndef QGCMESSAGEHANDLER_H
-#define QGCMESSAGEHANDLER_H
+#pragma once
 
 #include <QObject>
 #include <QVector>
 #include <QMutex>
 
-#include "Vehicle.h"
 #include "QGCToolbox.h"
 
 class Vehicle;
@@ -72,7 +63,7 @@ class UASMessageHandler : public QGCTool
     Q_OBJECT
 
 public:
-    explicit UASMessageHandler(QGCApplication* app);
+    explicit UASMessageHandler(QGCApplication* app, QGCToolbox* toolbox);
     ~UASMessageHandler();
 
     /**
@@ -144,7 +135,7 @@ private slots:
     void _activeVehicleChanged(Vehicle* vehicle);
 
 private:
-    UASInterface*           _activeUAS;
+    Vehicle*                _activeVehicle;
     int                     _activeComponent;
     bool                    _multiComp;
     QVector<UASMessage*>    _messages;
@@ -158,4 +149,3 @@ private:
     MultiVehicleManager*    _multiVehicleManager;
 };
 
-#endif // QGCMESSAGEHANDLER_H

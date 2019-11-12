@@ -38,20 +38,26 @@ void RTCMMavlink::RTCMDataUpdate(QByteArray message)
 
     if (message.size() < maxMessageLength) {
         mavlinkRtcmData.len = message.size();
+        mavlinkRtcmData.flags = (_sequenceId & 0x1F) << 3;
         memcpy(&mavlinkRtcmData.data, message.data(), message.size());
         sendMessageToVehicle(mavlinkRtcmData);
     } else {
-        //we need to fragment
+        // We need to fragment
+
+        uint8_t fragmentId = 0;         // Fragment id indicates the fragment within a set
         int start = 0;
         while (start < message.size()) {
             int length = std::min(message.size() - start, maxMessageLength);
-            mavlinkRtcmData.flags = 1; //fragmented
+            mavlinkRtcmData.flags = 1;                      // LSB set indicates message is fragmented
+            mavlinkRtcmData.flags |= fragmentId++ << 1;     // Next 2 bits are fragment id
+            mavlinkRtcmData.flags |= (_sequenceId & 0x1F) << 3;     // Next 5 bits are sequence id
             mavlinkRtcmData.len = length;
             memcpy(&mavlinkRtcmData.data, message.data() + start, length);
             sendMessageToVehicle(mavlinkRtcmData);
             start += length;
         }
     }
+    ++_sequenceId;
 }
 
 void RTCMMavlink::sendMessageToVehicle(const mavlink_gps_rtcm_data_t& msg)
@@ -61,8 +67,11 @@ void RTCMMavlink::sendMessageToVehicle(const mavlink_gps_rtcm_data_t& msg)
     for (int i = 0; i < vehicles.count(); i++) {
         Vehicle* vehicle = qobject_cast<Vehicle*>(vehicles[i]);
         mavlink_message_t message;
-        mavlink_msg_gps_rtcm_data_encode(mavlinkProtocol->getSystemId(),
-                mavlinkProtocol->getComponentId(), &message, &msg);
-        vehicle->sendMessageOnPriorityLink(message);
+        mavlink_msg_gps_rtcm_data_encode_chan(mavlinkProtocol->getSystemId(),
+                                              mavlinkProtocol->getComponentId(),
+                                              vehicle->priorityLink()->mavlinkChannel(),
+                                              &message,
+                                              &msg);
+        vehicle->sendMessageOnLink(vehicle->priorityLink(), message);
     }
 }

@@ -12,7 +12,6 @@
 ///     @author Don Gagne <don@thegagnes.com>
 
 #include "APMCameraComponent.h"
-#include "QGCQmlWidgetHolder.h"
 #include "APMAutoPilotPlugin.h"
 #include "APMAirframeComponent.h"
 
@@ -29,7 +28,7 @@ QString APMCameraComponent::name(void) const
 
 QString APMCameraComponent::description(void) const
 {
-    return tr("The Camera Component is used to setup camera and gimbal settings.");
+    return tr("Camera setup is used to adjust camera and gimbal settings.");
 }
 
 QString APMCameraComponent::iconResource(void) const
@@ -54,22 +53,14 @@ QStringList APMCameraComponent::setupCompleteChangedTriggerList(void) const
 
 QUrl APMCameraComponent::setupSource(void) const
 {
+    if (_vehicle->sub()) {
+        return QUrl::fromUserInput(QStringLiteral("qrc:/qml/APMCameraSubComponent.qml"));
+    }
     return QUrl::fromUserInput(QStringLiteral("qrc:/qml/APMCameraComponent.qml"));
+
 }
 
 QUrl APMCameraComponent::summaryQmlSource(void) const
 {
     return QUrl::fromUserInput(QStringLiteral("qrc:/qml/APMCameraComponentSummary.qml"));
-}
-
-QString APMCameraComponent::prerequisiteSetup(void) const
-{
-    APMAutoPilotPlugin* plugin = dynamic_cast<APMAutoPilotPlugin*>(_autopilot);
-    Q_ASSERT(plugin);
-
-    if (!plugin->airframeComponent()->setupComplete()) {
-        return plugin->airframeComponent()->name();
-    }
-
-    return QString();
 }

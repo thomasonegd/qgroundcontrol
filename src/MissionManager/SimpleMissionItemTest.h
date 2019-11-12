@@ -7,30 +7,58 @@
  *
  ****************************************************************************/
 
+#pragma once
 
-#ifndef SimpleMissionItemTest_H
-#define SimpleMissionItemTest_H
-
-#include "UnitTest.h"
-#include "TCPLink.h"
-#include "MultiSignalSpy.h"
-
-#include <QGeoCoordinate>
+#include "VisualMissionItemTest.h"
+#include "SimpleMissionItem.h"
 
 /// Unit test for SimpleMissionItem
-class SimpleMissionItemTest : public UnitTest
+class SimpleMissionItemTest : public VisualMissionItemTest
 {
     Q_OBJECT
     
 public:
     SimpleMissionItemTest(void);
-    
+
+    void init(void) override;
+    void cleanup(void) override;
+
 private slots:
     void _testSignals(void);
     void _testEditorFacts(void);
     void _testDefaultValues(void);
-    
+    void _testCameraSectionDirty(void);
+    void _testSpeedSectionDirty(void);
+    void _testCameraSection(void);
+    void _testSpeedSection(void);
+    void _testAltitudePropogation(void);
+
 private:
+    enum {
+        commandChangedIndex = 0,
+        altitudeModeChangedIndex,
+        friendlyEditAllowedChangedIndex,
+        headingDegreesChangedIndex,
+        rawEditChangedIndex,
+        cameraSectionChangedIndex,
+        speedSectionChangedIndex,
+        coordinateHasRelativeAltitudeChangedIndex,
+        maxSignalIndex,
+    };
+
+    enum {
+        commandChangedMask =                        1 << commandChangedIndex,
+        altitudeModeChangedMask =                  1 << altitudeModeChangedIndex,
+        friendlyEditAllowedChangedMask =            1 << friendlyEditAllowedChangedIndex,
+        headingDegreesChangedMask =                 1 << headingDegreesChangedIndex,
+        rawEditChangedMask =                        1 << rawEditChangedIndex,
+        cameraSectionChangedMask =                  1 << cameraSectionChangedIndex,
+        speedSectionChangedMask =                   1 << speedSectionChangedIndex,
+        coordinateHasRelativeAltitudeChangedMask =  1 << coordinateHasRelativeAltitudeChangedIndex,
+    };
+
+    static const size_t cSimpleItemSignals = maxSignalIndex;
+    const char*         rgSimpleItemSignals[cSimpleItemSignals];
 
     typedef struct {
         MAV_CMD        command;
@@ -43,10 +71,15 @@ private:
     } FactValue_t;
     
     typedef struct {
-        size_t              cFactValues;
-        const FactValue_t*  rgFactValues;
-        bool                relativeAltCheckbox;
+        size_t                          cFactValues;
+        const FactValue_t*              rgFactValues;
+        double                          altValue;
+        QGroundControlQmlGlobal::AltitudeMode altMode;
     } ItemExpected_t;
+
+    SimpleMissionItem*  _simpleItem;
+    MultiSignalSpy*     _spySimpleItem;
+    MultiSignalSpy*     _spyVisualItem;
 
     static const ItemInfo_t     _rgItemInfo[];
     static const ItemExpected_t _rgItemExpected[];
@@ -59,5 +92,3 @@ private:
     static const FactValue_t    _rgFactValuesConditionDelay[];
     static const FactValue_t    _rgFactValuesDoJump[];
 };
-
-#endif

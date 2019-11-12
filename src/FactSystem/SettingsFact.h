@@ -7,12 +7,7 @@
  *
  ****************************************************************************/
 
-
-/// @file
-///     @author Don Gagne <don@thegagnes.com>
-
-#ifndef SettingsFact_H
-#define SettingsFact_H
+#pragma once
 
 #include "Fact.h"
 
@@ -22,17 +17,21 @@ class SettingsFact : public Fact
     Q_OBJECT
     
 public:
-    SettingsFact(QObject* parent = NULL);
-    SettingsFact(QString settingGroup, QString settingName, FactMetaData::ValueType_t type, const QVariant& defaultValue, QObject* parent = NULL);
-    SettingsFact(const SettingsFact& other, QObject* parent = NULL);
+    SettingsFact(QObject* parent = nullptr);
+    SettingsFact(QString settingsGroup, FactMetaData* metaData, QObject* parent = nullptr);
+    SettingsFact(const SettingsFact& other, QObject* parent = nullptr);
 
     const SettingsFact& operator=(const SettingsFact& other);
 
+    Q_PROPERTY(bool visible MEMBER _visible CONSTANT)
+
+    // Must be called before any references to fact
+    void setVisible(bool visible) { _visible = visible; }
+
 private slots:
-    void _valueChanged(QVariant value);
+    void _rawValueChanged(QVariant value);
 
 private:
-    QString _settingGroup;
+    QString _settingsGroup;
+    bool    _visible;
 };
-
-#endif

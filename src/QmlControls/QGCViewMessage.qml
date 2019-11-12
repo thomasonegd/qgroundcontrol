@@ -12,7 +12,7 @@
 ///     @author Don Gagne <don@thegagnes.com>
 
 import QtQuick 2.3
-import QtQuick.Controls 1.3
+import QtQuick.Controls 1.2
 
 import QGroundControl.Controls 1.0
 import QGroundControl.Palette 1.0
@@ -20,9 +20,16 @@ import QGroundControl.Palette 1.0
 QGCViewDialog {
     property string message
 
-    QGCLabel {
+    QGCFlickable {
         anchors.fill:   parent
-        wrapMode:       Text.WordWrap
-        text:           message
+        contentHeight:  label.contentHeight
+
+        QGCLabel {
+            id:             label
+            anchors.left:   parent.left
+            anchors.right:  parent.right
+            wrapMode:       Text.WordWrap
+            text:           message
+        }
     }
 }

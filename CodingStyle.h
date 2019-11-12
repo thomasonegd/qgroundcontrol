@@ -7,13 +7,11 @@
  *
  ****************************************************************************/
 
-
 // This is an example class header file which is used to describe the QGroundControl
 // coding style. In general almost everything in here has some coding style meaning.
 // Not all style choices are explained.
 
-#ifndef CodingStyle_H
-#define CodingStyle_H
+#pragma once
 
 #include <QObject>
 #include <QMap>
@@ -80,5 +78,3 @@ private:
     
     static const int _privateStaticVariable;
 };
-
-#endif

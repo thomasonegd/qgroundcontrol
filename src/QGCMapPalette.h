@@ -43,13 +43,15 @@ class QGCMapPalette : public QObject
     Q_PROPERTY(bool lightColors READ lightColors WRITE setLightColors NOTIFY paletteChanged)
 
     Q_PROPERTY(QColor text          READ text          NOTIFY paletteChanged)
+    Q_PROPERTY(QColor textOutline   READ textOutline   NOTIFY paletteChanged)
     Q_PROPERTY(QColor thumbJoystick READ thumbJoystick NOTIFY paletteChanged)
 
 public:    
-    QGCMapPalette(QObject* parent = NULL);
+    QGCMapPalette(QObject* parent = nullptr);
     
     /// Text color
     QColor text(void)           const { return _text[_lightColors ? 0 : 1]; }
+    QColor textOutline(void)    const { return _textOutline[_lightColors ? 0 : 1]; }
 
     /// Thumb joystick indicator
     QColor thumbJoystick(void)  const { return _thumbJoystick[_lightColors ? 0 : 1]; }
@@ -62,12 +64,13 @@ signals:
     void lightColorsChanged(bool lightColors);
     
 private:
-    bool _lightColors;
+    bool _lightColors = false;
 
     static const int _cColorGroups = 2;
 
     static QColor _thumbJoystick[_cColorGroups];
     static QColor _text[_cColorGroups];
+    static QColor _textOutline[_cColorGroups];
 };
 
 #endif

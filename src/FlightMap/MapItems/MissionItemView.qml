@@ -8,8 +8,8 @@
  ****************************************************************************/
 
 
-import QtQuick          2.4
-import QtQuick.Controls 1.3
+import QtQuick          2.3
+import QtQuick.Controls 1.2
 import QtQuick.Dialogs  1.2
 import QtLocation       5.3
 import QtPositioning    5.3
@@ -25,7 +25,7 @@ MapItemView {
     delegate: MissionItemIndicator {
         id:             itemIndicator
         coordinate:     object.coordinate
-        visible:        object.specifiesCoordinate && (index != 0 || object.showHomePosition)
+        visible:        object.specifiesCoordinate
         z:              QGroundControl.zOrderMapItems
         missionItem:    object
         sequenceNumber: object.sequenceNumber
@@ -33,19 +33,16 @@ MapItemView {
             parent._retaskSequence = object.sequenceNumber
             parent.flightWidgets.guidedModeBar.confirmAction(parent.flightWidgets.guidedModeBar.confirmRetask)
         }
-
         // These are the non-coordinate child mission items attached to this item
         Row {
             anchors.top:    parent.top
             anchors.left:   parent.right
-
             Repeater {
-                model: object.childItems
-
+                model:      object.childItems
                 delegate: MissionItemIndexLabel {
-                    label:          object.abbreviation
-                    isCurrentItem:  object.isCurrentItem
-                    z:              2
+                    label:  object.abbreviation
+                    checked: object.isCurrentItem
+                    z:      2
                 }
             }
         }

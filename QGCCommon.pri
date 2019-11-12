@@ -3,7 +3,7 @@
 # Please see our website at <http://qgroundcontrol.org>
 # Maintainer:
 # Lorenz Meier <lm@inf.ethz.ch>
-# (c) 2009-2014 QGroundControl Developers
+# (c) 2009-2019 QGroundControl Developers
 # License terms set in COPYING.md
 # -------------------------------------------------
 
@@ -19,8 +19,11 @@
 linux {
     linux-g++ | linux-g++-64 | linux-g++-32 | linux-clang {
         message("Linux build")
-        CONFIG += LinuxBuild
+        CONFIG  += LinuxBuild
         DEFINES += __STDC_LIMIT_MACROS
+        DEFINES += QGC_ENABLE_NFC RW_SUPPORT
+        DEFINES += QGC_GST_TAISYNC_ENABLED
+        DEFINES += QGC_GST_MICROHARD_ENABLED 
         linux-clang {
             message("Linux clang")
             QMAKE_CXXFLAGS += -Qunused-arguments -fcolor-diagnostics
@@ -29,45 +32,64 @@ linux {
         message("Linux R-Pi2 build")
         CONFIG += LinuxBuild
         DEFINES += __STDC_LIMIT_MACROS __rasp_pi2__
-    } else : android-g++ {
+        DEFINES += QGC_GST_TAISYNC_ENABLED
+        DEFINES += QGC_GST_MICROHARD_ENABLED 
+    } else : android-clang {
         CONFIG += AndroidBuild MobileBuild
         DEFINES += __android__
         DEFINES += __STDC_LIMIT_MACROS
         DEFINES += QGC_ENABLE_BLUETOOTH
+        DEFINES += QGC_GST_TAISYNC_ENABLED
+        DEFINES += QGC_GST_MICROHARD_ENABLED 
+        QMAKE_CXXFLAGS += -Wno-address-of-packed-member
+        QMAKE_CXXFLAGS += -Wno-unused-command-line-argument
+        QMAKE_CFLAGS += -Wno-unused-command-line-argument
+        QMAKE_LINK += -nostdlib++ # Hack fix?: https://forum.qt.io/topic/103713/error-cannot-find-lc-qt-5-12-android
         target.path = $$DESTDIR
-        equals(ANDROID_TARGET_ARCH, x86)  {
+        equals(ANDROID_TARGET_ARCH, armeabi-v7a)  {
+            DEFINES += __androidArm32__
+            message("Android Arm 32 bit build")
+        } else:equals(ANDROID_TARGET_ARCH, arm64-v8a)  {
+            DEFINES += __androidArm64__
+            message("Android Arm 64 bit build")
+        } else:equals(ANDROID_TARGET_ARCH, x86)  {
             CONFIG += Androidx86Build
             DEFINES += __androidx86__
-            DEFINES += QGC_DISABLE_UVC
-            message("Android x86 build")
-        } else {
             message("Android Arm build")
+        } else {
+            error("Unsupported Android architecture: $${ANDROID_TARGET_ARCH}")
         }
     } else {
         error("Unsuported Linux toolchain, only GCC 32- or 64-bit is supported")
     }
 } else : win32 {
-    win32-msvc2010 | win32-msvc2012 | win32-msvc2013 {
+    win32-msvc2015 {
         message("Windows build")
         CONFIG += WindowsBuild
         DEFINES += __STDC_LIMIT_MACROS
+        DEFINES += QGC_GST_TAISYNC_ENABLED
+        DEFINES += QGC_GST_MICROHARD_ENABLED 
     } else {
-        error("Unsupported Windows toolchain, only Visual Studio 2010, 2012, and 2013 are supported")
+        error("Unsupported Windows toolchain, only Visual Studio 2015 is supported")
     }
 } else : macx {
     macx-clang | macx-llvm {
         message("Mac build")
-        CONFIG += MacBuild
-        DEFINES += __macos__
-        CONFIG += x86_64
-        CONFIG -= x86
+        CONFIG  += MacBuild
+        CONFIG  += x86_64
+        CONFIG  -= x86
+        DEFINES += QGC_GST_TAISYNC_ENABLED
+        DEFINES += QGC_GST_MICROHARD_ENABLED 
         equals(QT_MAJOR_VERSION, 5) | greaterThan(QT_MINOR_VERSION, 5) {
                 QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.7
         } else {
                 QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.6
         }
-        QMAKE_MAC_SDK = macosx10.11
+        #-- Not forcing anything. Let qmake find the latest, installed SDK.
+        #QMAKE_MAC_SDK = macosx10.12
         QMAKE_CXXFLAGS += -fvisibility=hidden
+        #-- Disable annoying warnings comming from mavlink.h
+        QMAKE_CXXFLAGS += -Wno-address-of-packed-member
     } else {
         error("Unsupported Mac toolchain, only 64-bit LLVM+clang is supported")
     }
@@ -76,11 +98,15 @@ linux {
         error("Unsupported Qt version, 5.5.x or greater is required for iOS")
     }
     message("iOS build")
-    CONFIG += iOSBuild MobileBuild app_bundle
+    CONFIG  += iOSBuild MobileBuild app_bundle NoSerialBuild
+    CONFIG  -= bitcode
     DEFINES += __ios__
     DEFINES += QGC_NO_GOOGLE_MAPS
-    QMAKE_IOS_DEPLOYMENT_TARGET = 8.0
-    QMAKE_IOS_TARGETED_DEVICE_FAMILY = 1,2 # Universal
+    DEFINES += NO_SERIAL_LINK
+    DEFINES += QGC_DISABLE_UVC
+    DEFINES += QGC_GST_TAISYNC_ENABLED
+    QMAKE_IOS_DEPLOYMENT_TARGET = 11.0
+    QMAKE_APPLE_TARGETED_DEVICE_FAMILY = 1,2 # Universal
     QMAKE_LFLAGS += -Wl,-no_pie
 } else {
     error("Unsupported build platform, only Linux, Windows, Android and Mac (Mac OS and iOS) are supported")
@@ -113,24 +139,24 @@ exists ($$PWD/.git) {
     GIT_TIME     = $$system(git --git-dir $$PWD/.git --work-tree $$PWD show --oneline --format=\"%ci\" -s HEAD)
 
     # determine if we're on a tag matching vX.Y.Z (stable release)
-    GIT_TAG      = $$system(git --git-dir $$PWD/.git --work-tree $$PWD describe --exact-match --tags HEAD)
-    contains(GIT_TAG, v[0-9].[0-9].[0-9]) {
+    contains(GIT_DESCRIBE, v[0-9]+.[0-9]+.[0-9]+) {
         # release version "vX.Y.Z"
         GIT_VERSION = $${GIT_DESCRIBE}
+        VERSION      = $$replace(GIT_DESCRIBE, "v", "")
+        VERSION      = $$replace(VERSION, "-", ".")
+        VERSION      = $$section(VERSION, ".", 0, 3)
     } else {
         # development version "Development branch:sha date"
         GIT_VERSION = "Development $${GIT_BRANCH}:$${GIT_HASH} $${GIT_TIME}"
+        VERSION         = 0.0.0
     }
 
-    VERSION      = $$replace(GIT_DESCRIBE, "v", "")
-    VERSION      = $$replace(VERSION, "-", ".")
-    VERSION      = $$section(VERSION, ".", 0, 3)
     MacBuild {
         MAC_VERSION  = $$section(VERSION, ".", 0, 2)
         MAC_BUILD    = $$section(VERSION, ".", 3, 3)
         message(QGroundControl version $${MAC_VERSION} build $${MAC_BUILD} describe $${GIT_VERSION})
     } else {
-        message(QGroundControl version $${VERSION} describe $${GIT_VERSION})
+        message(QGroundControl $${GIT_VERSION})
     }
 } else {
     GIT_VERSION     = None
@@ -198,12 +224,21 @@ MacBuild | LinuxBuild {
     MacBuild {
         # Latest clang version has a buggy check for this which cause Qt headers to throw warnings on qmap.h
         QMAKE_CXXFLAGS_WARN_ON += -Wno-return-stack-address
+        # Xcode 8.3 has issues on how MAVLink accesses (packed) message structure members.
+        # Note that this will fail when Xcode version reaches 10.x.x
+        XCODE_VERSION = $$system($$PWD/tools/get_xcode_version.sh)
+        greaterThan(XCODE_VERSION, 8.2.0): QMAKE_CXXFLAGS_WARN_ON += -Wno-address-of-packed-member
     }
 }
 
 WindowsBuild {
+    win32-msvc2015 {
+        QMAKE_CFLAGS -= -Zc:strictStrings
+        QMAKE_CXXFLAGS -= -Zc:strictStrings
+    }
     QMAKE_CFLAGS_RELEASE -= -Zc:strictStrings
     QMAKE_CFLAGS_RELEASE_WITH_DEBUGINFO -= -Zc:strictStrings
+
     QMAKE_CXXFLAGS_RELEASE -= -Zc:strictStrings
     QMAKE_CXXFLAGS_RELEASE_WITH_DEBUGINFO -= -Zc:strictStrings
     QMAKE_CXXFLAGS_WARN_ON += /W3 \
@@ -221,13 +256,19 @@ WindowsBuild {
 #
 
 ReleaseBuild {
-    DEFINES += QT_NO_DEBUG
+    DEFINES += QT_NO_DEBUG QT_MESSAGELOGCONTEXT
     CONFIG += force_debug_info  # Enable debugging symbols on release builds
     !iOSBuild {
-        CONFIG += ltcg              # Turn on link time code generation
+        !AndroidBuild {
+            CONFIG += ltcg              # Turn on link time code generation
+        }
     }
 
     WindowsBuild {
+        *msvc* { # visual studio spec filter
+            # Run compilation using VS compiler using multiple threads
+            QMAKE_CXXFLAGS += -MP
+        }
         # Enable function level linking and enhanced optimized debugging
         QMAKE_CFLAGS_RELEASE   += /Gy /Zo
         QMAKE_CXXFLAGS_RELEASE += /Gy /Zo
@@ -238,12 +279,4 @@ ReleaseBuild {
         QMAKE_LFLAGS_RELEASE += /OPT:ICF
         QMAKE_LFLAGS_RELEASE_WITH_DEBUGINFO += /OPT:ICF
     }
-}
-
-#
-# Unit Test specific configuration goes here
-#
-
-DebugBuild {
-    DEFINES += UNITTEST_BUILD
 }

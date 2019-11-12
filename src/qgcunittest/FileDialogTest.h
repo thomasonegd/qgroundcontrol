@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   (c) 2009-2016 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
+ *   (c) 2009-2018 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
  *
  * QGroundControl is licensed according to the terms in the file
  * COPYING.md in the root of the source code directory.
@@ -9,12 +9,11 @@
 
 
 /// @file
-///     @brief Unit test for QGCFileDialog catching mechanism.
+///     @brief Unit test for QGCQFileDialog catching mechanism.
 ///
 ///     @author Don Gagne <don@thegagnes.com>
 
-#ifndef FILEDIALOGTEST_H
-#define FILEDIALOGTEST_H
+#pragma once
 
 #include "UnitTest.h"
 
@@ -33,4 +32,3 @@ private slots:
     void _fileDialogExpectedIncorrect_test(void);
 };
 
-#endif

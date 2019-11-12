@@ -15,7 +15,6 @@
 #include "AirframeComponentAirframes.h"
 #include "QGCMAVLink.h"
 #include "MultiVehicleManager.h"
-#include "AutoPilotPluginManager.h"
 #include "QGCApplication.h"
 
 #include <QVariant>
@@ -58,7 +57,9 @@ AirframeComponentController::AirframeComponentController(void) :
             Q_CHECK_PTR(pInfo);
 
             if (_autostartId == pInfo->autostartId) {
-                Q_ASSERT(!autostartFound);
+                if (autostartFound) {
+                    qWarning() << "AirframeComponentController::AirframeComponentController duplicate ids found:" << _autostartId;
+                }
                 autostartFound = true;
                 _currentAirframeType = pType->name;
                 _currentVehicleName = pInfo->name;
@@ -84,7 +85,7 @@ AirframeComponentController::~AirframeComponentController()
 void AirframeComponentController::changeAutostart(void)
 {
     if (qgcApp()->toolbox()->multiVehicleManager()->vehicles()->count() > 1) {
-        qgcApp()->showMessage("You cannot change airframe configuration while connected to multiple vehicles.");
+        qgcApp()->showMessage(tr("You cannot change airframe configuration while connected to multiple vehicles."));
 		return;
 	}
 	
@@ -118,14 +119,14 @@ void AirframeComponentController::_waitParamWriteSignal(QVariant value)
 
 void AirframeComponentController::_rebootAfterStackUnwind(void)
 {    
-    _uas->executeCommand(MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN, 1, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0);
+    _vehicle->sendMavCommand(_vehicle->defaultComponentId(), MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN, true /* showError */, 1.0f);
     qgcApp()->processEvents(QEventLoop::ExcludeUserInputEvents);
     for (unsigned i = 0; i < 2000; i++) {
         QGC::SLEEP::usleep(500);
         qgcApp()->processEvents(QEventLoop::ExcludeUserInputEvents);
     }
-    qgcApp()->toolbox()->linkManager()->disconnectAll();
     qgcApp()->restoreOverrideCursor();
+    qgcApp()->toolbox()->linkManager()->disconnectAll();
 }
 
 AirframeType::AirframeType(const QString& name, const QString& imageResource, QObject* parent) :

@@ -73,18 +73,20 @@ LinuxBuild {
         QMAKE_POST_LINK += $$escape_expand(\\n) xcopy \"$$GST_ROOT_WIN\\lib\\gstreamer-1.0\\validate\\*.dll\" \"$$DESTDIR_WIN\\gstreamer-plugins\\validate\\\" /Y $$escape_expand(\\n)
     }
 } else:AndroidBuild {
-    #- gstreamer assumed to be installed in $$PWD/../../android/gstreamer-1.0-android-armv7-1.5.2 (or x86)
-    Androidx86Build {
-        GST_ROOT = $$PWD/../../gstreamer-1.0-android-x86-1.5.2
+    #- gstreamer assumed to be installed in $$PWD/../../gstreamer-1.0-android-universal-1.14.4/***
+    contains(QT_ARCH, arm) {
+        GST_ROOT = $$PWD/../../gstreamer-1.0-android-universal-1.14.4/armv7
+    } else:contains(QT_ARCH, arm64) {
+        GST_ROOT = $$PWD/../../gstreamer-1.0-android-universal-1.14.4/arm64
     } else {
-        GST_ROOT = $$PWD/../../gstreamer-1.0-android-armv7-1.5.2
+        GST_ROOT = $$PWD/../../gstreamer-1.0-android-universal-1.14.4/x86
     }
     exists($$GST_ROOT) {
         QMAKE_CXXFLAGS  += -pthread
         CONFIG          += VideoEnabled
 
         # We want to link these plugins statically
-        LIBS += -L$$GST_ROOT/lib/gstreamer-1.0/static \
+        LIBS += -L$$GST_ROOT/lib/gstreamer-1.0 \
             -lgstvideo-1.0 \
             -lgstcoreelements \
             -lgstudp \
@@ -95,15 +97,18 @@ LinuxBuild {
             -lgstsdpelem \
             -lgstvideoparsersbad \
             -lgstrtpmanager \
-            -lgstrmdemux \
+            -lgstisomp4 \
+            -lgstmatroska \
+            -lgstandroidmedia
 
         # Rest of GStreamer dependencies
         LIBS += -L$$GST_ROOT/lib \
             -lgstfft-1.0 -lm  \
             -lgstnet-1.0 -lgio-2.0 \
+            -lgstphotography-1.0 -lgstgl-1.0 -lEGL \
             -lgstaudio-1.0 -lgstcodecparsers-1.0 -lgstbase-1.0 \
             -lgstreamer-1.0 -lgstrtp-1.0 -lgstpbutils-1.0 -lgstrtsp-1.0 -lgsttag-1.0 \
-            -lgstvideo-1.0 -lavformat -lavcodec -lavutil -lx264 -lavresample \
+            -lgstvideo-1.0 -lavformat -lavcodec -lavutil -lx264 -lavfilter -lswresample \
             -lgstriff-1.0 -lgstcontroller-1.0 -lgstapp-1.0 \
             -lgstsdp-1.0 -lbz2 -lgobject-2.0 \
             -Wl,--export-dynamic -lgmodule-2.0 -pthread -lglib-2.0 -lorc-0.4 -liconv -lffi -lintl \
@@ -176,27 +181,17 @@ VideoEnabled {
         $$PWD/gstqtvideosink/utils/bufferformat.cpp \
         $$PWD/gstqtvideosink/utils/utils.cpp \
 
+    iOSBuild {
+        OBJECTIVE_SOURCES += \
+            $$PWD/ios/gst_ios_init.m
+        INCLUDEPATH += \
+            $$PWD/ios
+    }
+
 } else {
     LinuxBuild|MacBuild|iOSBuild|WindowsBuild|AndroidBuild {
         message("Skipping support for video streaming (GStreamer libraries not installed)")
-        MacBuild {
-            message("  You can download it from http://gstreamer.freedesktop.org/data/pkg/osx/")
-            message("  Select the devel package and install it (gstreamer-1.0-devel-1.x.x-x86_64.pkg)")
-            message("  It will be installed in /Libraries/Frameworks")
-        }
-        LinuxBuild {
-            message("  You can install it using apt-get")
-            message("  sudo apt-get install libgstreamer-plugins-base1.0-dev libgstreamer1.0-0:amd64 libgstreamer1.0-dev")
-        }
-        WindowsBuild {
-            message("  You can download it from http://gstreamer.freedesktop.org/data/pkg/windows/")
-            message("  Select the devel AND runtime packages and install them (x86, not the 64-Bit)")
-            message("  It will be installed in C:/gstreamer. You need to update you PATH to point to the bin directory.")
-        }
-        AndroidBuild {
-            message("  You can download it from http://gstreamer.freedesktop.org/data/pkg/android/")
-            message("  Uncompress the archive into the qgc root source directory (same directory where qgroundcontrol.pro is found.")
-        }
+        message("Installation instructions here: https://github.com/mavlink/qgroundcontrol/blob/master/src/VideoStreaming/README.md")
     } else {
         message("Skipping support for video streaming (Unsupported platform)")
     }

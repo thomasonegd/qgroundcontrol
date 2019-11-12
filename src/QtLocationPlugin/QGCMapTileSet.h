@@ -42,7 +42,7 @@ public:
     QGCCachedTileSet    (const QString& name);
     ~QGCCachedTileSet   ();
 
-    Q_PROPERTY(QString      name                READ    name                CONSTANT)
+    Q_PROPERTY(QString      name                READ    name                NOTIFY nameChanged)
     Q_PROPERTY(QString      mapTypeStr          READ    mapTypeStr          CONSTANT)
     Q_PROPERTY(double       topleftLon          READ    topleftLon          CONSTANT)
     Q_PROPERTY(double       topleftLat          READ    topleftLat          CONSTANT)
@@ -71,6 +71,8 @@ public:
     Q_PROPERTY(bool         downloading         READ    downloading         NOTIFY downloadingChanged)
     Q_PROPERTY(quint32      errorCount          READ    errorCount          NOTIFY errorCountChanged)
     Q_PROPERTY(QString      errorCountStr       READ    errorCountStr       NOTIFY errorCountChanged)
+
+    Q_PROPERTY(bool         selected            READ    selected            WRITE  setSelected  NOTIFY selectedChanged)
 
     Q_INVOKABLE void createDownloadTask ();
     Q_INVOKABLE void resumeDownloadTask ();
@@ -101,7 +103,7 @@ public:
     int         maxZoom                 () { return _maxZoom; }
     QDateTime   creationDate            () { return _creationDate; }
     quint64     id                      () { return _id; }
-    UrlFactory::MapType type            () { return _type; }
+    QString type            () { return _type; }
     bool        complete                () { return _defaultSet || (_totalTileCount <= _savedTileCount); }
     bool        defaultSet              () { return _defaultSet; }
     quint64     setID                   () { return _id; }
@@ -109,7 +111,9 @@ public:
     bool        downloading             () { return _downloading; }
     quint32     errorCount              () { return _errorCount; }
     QString     errorCountStr           ();
+    bool        selected                () { return _selected; }
 
+    void        setSelected             (bool sel);
     void        setName                 (QString name)              { _name = name; }
     void        setMapTypeStr           (QString typeStr)           { _mapTypeStr = typeStr; }
     void        setTopleftLat           (double lat)                { _topleftLat = lat; }
@@ -126,7 +130,7 @@ public:
     void        setMaxZoom              (int zoom)                  { _maxZoom = zoom; }
     void        setCreationDate         (QDateTime date)            { _creationDate = date; }
     void        setId                   (quint64 id)                { _id = id; }
-    void        setType                 (UrlFactory::MapType type)  { _type = type; }
+    void        setType                 (QString type)  { _type = type; }
     void        setDefaultSet           (bool def)                  { _defaultSet = def; }
     void        setDeleting             (bool del)                  { _deleting = del; emit deletingChanged(); }
     void        setDownloading          (bool down)                 { _downloading = down; }
@@ -142,6 +146,8 @@ signals:
     void        savedTileSizeChanged    ();
     void        completeChanged         ();
     void        errorCountChanged       ();
+    void        selectedChanged         ();
+    void        nameChanged             ();
 
 private slots:
     void _tileListFetched               (QList<QGCTile*> tiles);
@@ -172,7 +178,7 @@ private:
     bool        _downloading;
     QDateTime   _creationDate;
     quint64     _id;
-    UrlFactory::MapType _type;
+    QString _type;
     QNetworkAccessManager*  _networkManager;
     QHash<QString, QNetworkReply*> _replies;
     quint32     _errorCount;
@@ -181,6 +187,7 @@ private:
     bool        _noMoreTiles;
     bool        _batchRequested;
     QGCMapEngineManager* _manager;
+    bool        _selected;
 };
 
 #endif // QGC_MAP_TILE_SET_H

@@ -20,8 +20,12 @@ QGCFileDownload::QGCFileDownload(QObject* parent)
 
 }
 
-bool QGCFileDownload::download(const QString& remoteFile)
+bool QGCFileDownload::download(const QString& remoteFile, bool redirect)
 {
+    if (!redirect) {
+        _originalRemoteFile = remoteFile;
+    }
+
     if (remoteFile.isEmpty()) {
         qWarning() << "downloadFile empty";
         return false;
@@ -70,7 +74,7 @@ bool QGCFileDownload::download(const QString& remoteFile)
     
     // Store local file location in user attribute so we can retrieve when the download finishes
     networkRequest.setAttribute(QNetworkRequest::User, localFile);
-    
+
     QNetworkReply* networkReply = get(networkRequest);
     if (!networkReply) {
         qWarning() << "QNetworkAccessManager::get failed";
@@ -91,25 +95,42 @@ void QGCFileDownload::_downloadFinished(void)
     
     // When an error occurs or the user cancels the download, we still end up here. So bail out in
     // those cases.
-    if (reply->error() != QNetworkReply::NoError) {
+    if (reply->error() != QNetworkReply::NoError) {        
+        reply->deleteLater();
         return;
     }
-    
+
+    // Check for redirection
+    QVariant redirectionTarget = reply->attribute(QNetworkRequest::RedirectionTargetAttribute);
+    if (!redirectionTarget.isNull()) {
+        QUrl redirectUrl = reply->url().resolved(redirectionTarget.toUrl());
+        download(redirectUrl.toString(), true /* redirect */);
+        reply->deleteLater();
+        return;
+    }
+
     // Download file location is in user attribute
     QString downloadFilename = reply->request().attribute(QNetworkRequest::User).toString();
-    Q_ASSERT(!downloadFilename.isEmpty());
-    
-    // Store downloaded file in download location
-    QFile file(downloadFilename);
-    if (!file.open(QIODevice::WriteOnly)) {
-        emit error(QString("Could not save downloaded file to %1. Error: %2").arg(downloadFilename).arg(file.errorString()));
-        return;
-    }
-    
-    file.write(reply->readAll());
-    file.close();
 
-    emit downloadFinished(reply->url().toString(), downloadFilename);
+    if (!downloadFilename.isEmpty()) {
+        // Store downloaded file in download location
+        QFile file(downloadFilename);
+        if (!file.open(QIODevice::WriteOnly)) {
+            emit error(tr("Could not save downloaded file to %1. Error: %2").arg(downloadFilename).arg(file.errorString()));
+            return;
+        }
+
+        file.write(reply->readAll());
+        file.close();
+
+        emit downloadFinished(_originalRemoteFile, downloadFilename);
+    } else {
+        QString errorMsg = "Internal error";
+        qWarning() << errorMsg;
+        emit error(errorMsg);
+    }
+
+    reply->deleteLater();
 }
 
 /// @brief Called when an error occurs during download
@@ -118,13 +139,13 @@ void QGCFileDownload::_downloadError(QNetworkReply::NetworkError code)
     QString errorMsg;
     
     if (code == QNetworkReply::OperationCanceledError) {
-        errorMsg = "Download cancelled";
+        errorMsg = tr("Download cancelled");
 
     } else if (code == QNetworkReply::ContentNotFoundError) {
-        errorMsg = "Error: File Not Found";
+        errorMsg = tr("Error: File Not Found");
 
     } else {
-        errorMsg = QString("Error during download. Error: %1").arg(code);
+        errorMsg = tr("Error during download. Error: %1").arg(code);
     }
 
     emit error(errorMsg);

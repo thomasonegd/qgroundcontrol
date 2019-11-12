@@ -22,28 +22,31 @@ class SensorsComponent : public VehicleComponent
     Q_OBJECT
     
 public:
-    SensorsComponent(Vehicle* vehicle, AutoPilotPlugin* autopilot, QObject* parent = NULL);
+    SensorsComponent(Vehicle* vehicle, AutoPilotPlugin* autopilot, QObject* parent = nullptr);
     
     // Virtuals from VehicleComponent
-    virtual QStringList setupCompleteChangedTriggerList(void) const;
+    QStringList setupCompleteChangedTriggerList(void) const override;
     
     // Virtuals from VehicleComponent
-    virtual QString name(void) const;
-    virtual QString description(void) const;
-    virtual QString iconResource(void) const;
-    virtual bool requiresSetup(void) const;
-    virtual bool setupComplete(void) const;
-    virtual QUrl setupSource(void) const;
-    virtual QUrl summaryQmlSource(void) const;
-    virtual QString prerequisiteSetup(void) const;
+    virtual QString name(void) const override;
+    virtual QString description(void) const override;
+    virtual QString iconResource(void) const override;
+    virtual bool requiresSetup(void) const override;
+    virtual bool setupComplete(void) const override;
+    virtual QUrl setupSource(void) const override;
+    virtual QUrl summaryQmlSource(void) const override;
     
 private:
     const QString   _name;
     QVariantList    _summaryItems;
     QStringList     _deviceIds;
 
-    static const char* _airspeedBreaker;
-    static const char* _airspeedCal;
+    static const char* _airspeedDisabledParam;
+    static const char* _airspeedBreakerParam;
+    static const char* _airspeedCalParam;
+
+    static const char* _magEnabledParam;
+    static const char* _magCalParam;
 };
 
 #endif

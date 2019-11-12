@@ -50,6 +50,8 @@
 #include "vehicle_gps_position.h"
 #include "satellite_info.h"
 
+#define M_DEG_TO_RAD 		(M_PI / 180.0)
+#define M_RAD_TO_DEG 		(180.0 / M_PI)
 #define M_DEG_TO_RAD_F 		0.01745329251994f
 #define M_RAD_TO_DEG_F 		57.2957795130823f
 
@@ -61,10 +63,9 @@ public:
     static void usleep(unsigned long usecs) { QThread::usleep(usecs); }
 };
 
-static inline void usleep(unsigned long usecs) {
+static inline void gps_usleep(unsigned long usecs) {
     Sleeper::usleep(usecs);
 }
-
 
 typedef uint64_t gps_abstime;
 
@@ -80,10 +81,14 @@ static inline gps_abstime gps_absolute_time() {
 
 //timespec is UNIX-specific
 #ifdef _WIN32
+#if _MSC_VER < 1900
 struct timespec
 {
     time_t tv_sec;
     long tv_nsec;
 };
+#else
+#include <time.h>
+#endif
 #endif
 
